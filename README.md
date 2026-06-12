@@ -45,4 +45,4 @@ Open http://localhost:5173 in your browser.
 
 I spent years teaching orphaned children in India with zero resources. EduBridge is my way of giving every child access to a patient, kind tutor — for free, forever.
 
-Built by Chandrababu Anakapalli for the Anthropic Claude Corps Fellowship.
+Every child deserves a teacher who never gets tired, never judges, and always has time. That's what Claude and this platform makes possible.
