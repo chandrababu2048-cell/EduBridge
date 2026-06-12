@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Environment variables — never commit API keys
+.env
+
+# Build output
+dist/
+
+# Logs
+*.log
+
+# Vite temp files
+*.timestamp-*.mjs
+
+# OS files
+.DS_Store
