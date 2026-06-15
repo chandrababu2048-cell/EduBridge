@@ -7,7 +7,8 @@ export const SUBJECT_THEMES = {
     text: 'text-[#FF6B6B]',
     light: 'bg-red-50',
     emoji: '🔢',
-    greeting: "Let's crunch some numbers! 🔢"
+    greeting: "Let's crunch some numbers! 🔢",
+    examples: ['What is 7 × 8?', 'How do fractions work?', 'Help me with shapes!']
   },
   Science: {
     color: '#67C99A',
@@ -16,7 +17,8 @@ export const SUBJECT_THEMES = {
     text: 'text-[#67C99A]',
     light: 'bg-green-50',
     emoji: '🔬',
-    greeting: "Let's discover something amazing! 🔬"
+    greeting: "Let's discover something amazing! 🔬",
+    examples: ['Why is the sky blue?', 'How do plants grow?', 'What are the planets?']
   },
   English: {
     color: '#4F86C6',
@@ -25,6 +27,7 @@ export const SUBJECT_THEMES = {
     text: 'text-[#4F86C6]',
     light: 'bg-blue-50',
     emoji: '📖',
-    greeting: "Let's explore words together! 📖"
+    greeting: "Let's explore words together! 📖",
+    examples: ['What is a noun?', 'Help me spell "because"', 'Make a sentence with "happy"']
   }
 };

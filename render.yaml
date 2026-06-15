@@ -1,0 +1,25 @@
+# OPTIONAL — not used by the default deployment.
+#
+# EduBridge now runs entirely on Vercel (frontend + serverless API in
+# frontend/api/). You do NOT need Render. This file is kept only as an
+# alternative for anyone who later wants to host the Express backend
+# (backend/) separately on Render.com.
+#
+# The backend lives in the /backend subfolder, so rootDir points there.
+# After connecting the repo on render.com, set the ANTHROPIC_API_KEY value
+# in the dashboard (it is intentionally not stored in this file).
+services:
+  - type: web
+    name: edubridge-backend
+    env: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production

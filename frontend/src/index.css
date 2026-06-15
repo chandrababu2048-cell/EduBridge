@@ -19,6 +19,29 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+/* Star counter "pop" when a new star is earned */
+@keyframes starPop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.4) rotate(-8deg); }
+  100% { transform: scale(1); }
+}
+
+.animate-starPop {
+  animation: starPop 0.9s ease-out;
+}
+
+/* Floating "Great question!" celebration toast */
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
+  20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  80%  { opacity: 1; transform: translate(-50%, -6px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
+}
+
+.animate-floatUp {
+  animation: floatUp 0.9s ease-out forwards;
+}
+
 body {
   background-color: #F8FAFF;
 }

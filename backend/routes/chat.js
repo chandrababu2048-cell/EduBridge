@@ -4,6 +4,7 @@
 import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSystemPrompt } from '../prompts/systemPrompts.js';
+import { logUsage } from './analytics.js';
 
 const router = express.Router();
 
@@ -30,6 +31,9 @@ router.post('/chat', async (req, res) => {
       system: systemPrompt,
       messages: [{ role: 'user', content: message }]
     });
+
+    // Record this question for the analytics dashboard (never blocks the reply)
+    logUsage(subject, ageLevel, language);
 
     // Send Claude's reply back to the frontend
     res.json({ reply: response.content[0].text });
