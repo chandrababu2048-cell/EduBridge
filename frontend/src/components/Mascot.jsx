@@ -1,6 +1,7 @@
 // Mascot — a friendly animated character that floats and reacts to what's
 // happening (idle / thinking / excited / celebrating). Changes per subject.
 import { motion, AnimatePresence } from 'framer-motion';
+import { SUBJECT_THEMES } from '../subjectThemes';
 
 const MASCOT_STATES = {
   idle:        { message: 'Ready to learn!' },
@@ -10,10 +11,8 @@ const MASCOT_STATES = {
   sleeping:    { message: 'Ask me something!' }
 };
 
-const SUBJECT_MASCOTS = { Math: '🦉', Science: '🦊', English: '🦋' };
-
 const Mascot = ({ state = 'idle', subject, size = 'text-6xl' }) => {
-  const mascotEmoji = SUBJECT_MASCOTS[subject] || '🦉';
+  const mascotEmoji = SUBJECT_THEMES[subject]?.mascot || '🦉';
 
   return (
     <motion.div
