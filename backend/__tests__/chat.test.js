@@ -1,0 +1,95 @@
+import { vi, describe, it, expect, beforeEach } from 'vitest';
+import request from 'supertest';
+import express from 'express';
+
+// mockCreate must be hoisted so the Anthropic mock factory can reference it
+const mockCreate = vi.hoisted(() => vi.fn());
+
+vi.mock('@anthropic-ai/sdk', () => ({
+  default: class {
+    constructor() {
+      this.messages = { create: mockCreate };
+    }
+  },
+}));
+
+// Prevent logUsage from trying to write files during chat tests
+vi.mock('../routes/analytics.js', () => ({
+  logUsage: vi.fn(),
+}));
+
+import chatRouter from '../routes/chat.js';
+
+const app = express();
+app.use(express.json());
+app.use('/api', chatRouter);
+
+describe('POST /api/chat — input validation', () => {
+  it('returns 400 when message is missing', async () => {
+    const res = await request(app).post('/api/chat').send({ subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Message is required');
+  });
+
+  it('returns 400 when message is an empty string', async () => {
+    const res = await request(app).post('/api/chat').send({ message: '', subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Message is required');
+  });
+
+  it('returns 400 when message is whitespace only', async () => {
+    const res = await request(app).post('/api/chat').send({ message: '   ', subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 when message is not a string', async () => {
+    const res = await request(app).post('/api/chat').send({ message: 42, subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /api/chat — successful response', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('returns 200 with Claude reply on a valid request', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Two plus two is four! 🌟' }] });
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'What is 2+2?', subject: 'Math', ageLevel: 'little', language: 'english' });
+    expect(res.status).toBe(200);
+    expect(res.body.reply).toBe('Two plus two is four! 🌟');
+  });
+
+  it('forwards the correct model and token limit to the Claude API', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Hello!' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Hello', subject: 'Science', ageLevel: 'older', language: 'english' });
+    const callArgs = mockCreate.mock.calls[0][0];
+    expect(callArgs.model).toBe('claude-sonnet-4-6');
+    expect(callArgs.max_tokens).toBe(1024);
+  });
+
+  it('passes the child message as the user turn', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Answer' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Why is the sky blue?', subject: 'Science', ageLevel: 'little', language: 'english' });
+    const callArgs = mockCreate.mock.calls[0][0];
+    expect(callArgs.messages[0].role).toBe('user');
+    expect(callArgs.messages[0].content).toBe('Why is the sky blue?');
+  });
+});
+
+describe('POST /api/chat — error handling', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('returns 500 when the Claude API throws', async () => {
+    mockCreate.mockRejectedValue(new Error('API unavailable'));
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'What is math?', subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Failed to get response');
+  });
+});
