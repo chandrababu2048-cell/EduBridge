@@ -11,6 +11,9 @@ import StarBackground from './components/StarBackground';
 import LevelUpModal from './components/LevelUpModal';
 import BadgeCollection from './components/BadgeCollection';
 import ConfettiEffect from './components/ConfettiEffect';
+import { AuthModal } from './components/AuthModal';
+import { useAuth } from './contexts/AuthContext.jsx';
+import { supabase } from './lib/supabase.js';
 import { useXP } from './hooks/useXP';
 import { useStats } from './hooks/useStats';
 import { useBadges } from './hooks/useBadges';
@@ -22,11 +25,54 @@ function App() {
   const [ageLevel, setAgeLevel] = useState('little');
   const [language, setLanguage] = useState('english');
   const [view, setView] = useState('welcome'); // 'welcome' | 'chat' | 'dashboard'
+  const [showAuth, setShowAuth] = useState(false);
 
-  const { xp, level, levelData, nextLevelXP, addXP, showLevelUp, setShowLevelUp } = useXP();
-  const { stats, recordQuestion } = useStats();
+  const { user, signOut } = useAuth();
+  const { xp, level, levelData, nextLevelXP, addXP, showLevelUp, setShowLevelUp, setXPFromCloud } = useXP();
+  const { stats, recordQuestion, setStatsFromCloud } = useStats();
   const { earned, locked, justUnlocked, clearUnlocked } = useBadges(stats);
   const { play, muted, toggleMute } = useSound();
+
+  // Load cloud progress when user logs in, merge with local (take the higher value)
+  useEffect(() => {
+    if (!user || !supabase) return;
+    supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setXPFromCloud(data.xp);
+        setStatsFromCloud({
+          totalQuestions: data.total_questions,
+          streak: data.streak,
+          lastSubject: data.last_subject,
+          usedTelugu: data.used_telugu,
+          learnedEarly: data.learned_early,
+          bySubject: data.by_subject ?? {},
+        });
+      });
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync progress to Supabase whenever XP or stats change (debounced 1.5s)
+  useEffect(() => {
+    if (!user || !supabase) return;
+    const timer = setTimeout(() => {
+      supabase.from('user_progress').upsert({
+        user_id: user.id,
+        xp,
+        total_questions: stats.totalQuestions,
+        streak: stats.streak,
+        last_subject: stats.lastSubject,
+        used_telugu: stats.usedTelugu,
+        learned_early: stats.learnedEarly,
+        by_subject: stats.bySubject,
+        updated_at: new Date().toISOString(),
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [user?.id, xp, stats]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Award XP + record stats whenever a question is asked
   const handleQuestionAsked = ({ subject, language }) => {
@@ -85,6 +131,9 @@ function App() {
           nextLevelXP={nextLevelXP}
           muted={muted}
           onToggleMute={toggleMute}
+          user={user}
+          onSignInClick={() => setShowAuth(true)}
+          onSignOut={signOut}
         />
 
         <main className="flex-1 flex flex-col min-h-0">
@@ -176,6 +225,9 @@ function App() {
       </div>
 
       <LevelUpModal show={showLevelUp} level={level} levelData={levelData} onClose={() => setShowLevelUp(false)} />
+
+      {/* Auth modal */}
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </div>
   );
 }
