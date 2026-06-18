@@ -11,6 +11,7 @@ import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import chatRouter from './routes/chat.js';
 import analyticsRouter from './routes/analytics.js';
+import agentsRouter from './routes/agents.js';
 
 const app = express();
 
@@ -40,6 +41,7 @@ app.use('/api', limiter);
 // Chat + analytics routes, both under /api
 app.use('/api', chatRouter);
 app.use('/api/analytics', analyticsRouter);
+app.use('/api/agents', agentsRouter);
 
 // Health check endpoint — used by the runbook to confirm the service is alive
 app.get('/health', (req, res) => {

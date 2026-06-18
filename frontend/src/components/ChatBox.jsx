@@ -40,10 +40,38 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
     setLoading(true);
     setMascotState('thinking');
 
-    // Reward the child (XP + stats + sound handled in App)
-    onQuestionAsked?.({ subject, language });
-
     try {
+      // Safety check before reaching the tutor
+      const safetyRes = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/safety-check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage, ageLevel }),
+      }).catch(() => null);
+      const safety = safetyRes?.ok ? await safetyRes.json() : { status: 'safe' };
+
+      if (safety.status === 'distress') {
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          text: "I hear you, and I'm really glad you told me. 💙 What you're feeling matters, and it is NOT your fault. Please talk to a trusted adult — a parent, teacher, or school counsellor — right away. You can also call Childline India FREE at 1098, any time, day or night. You are not alone, and help is there for you. 🌟"
+        }]);
+        setMascotState('idle');
+        setLoading(false);
+        return;
+      }
+
+      if (safety.status === 'inappropriate') {
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          text: "Hmm, that's not something I can help with! 😊 But I'd love to teach you something amazing — ask me about Math, Science, English, or any of our subjects!"
+        }]);
+        setMascotState('idle');
+        setLoading(false);
+        return;
+      }
+
+      // Safe — reward the child and call the tutor
+      onQuestionAsked?.({ subject, language });
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
