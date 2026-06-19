@@ -1,6 +1,13 @@
 {
-  "buildCommand": "cd frontend && npm ci && npm run build",
-  "outputDirectory": "frontend/dist",
-  "installCommand": "cd frontend && npm ci",
-  "framework": null
+  "experimentalServices": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "backend",
+      "buildCommand": "npm install",
+      "startCommand": "node server.js"
+    }
+  }
 }
