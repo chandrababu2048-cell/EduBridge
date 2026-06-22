@@ -1,8 +1,5 @@
-// Dashboard — usage stats + AI impact report for NGO staff / teachers.
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-const card = { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' };
 
 const Dashboard = ({ onBack }) => {
   const [stats, setStats] = useState(null);
@@ -32,61 +29,73 @@ const Dashboard = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen p-6">
-      <div className="max-w-2xl mx-auto flex flex-col gap-5">
+    <div className="min-h-screen p-5" style={{ background: 'var(--color-bg)' }}>
+      <div className="max-w-2xl mx-auto flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="text-[#00D4FF] font-bold min-h-[48px] px-2">← Back</button>
-          <h1 className="text-2xl font-black text-white">📊 EduBridge Stats</h1>
+          <button
+            onClick={onBack}
+            className="font-medium text-sm min-h-[44px] px-2 transition-colors"
+            style={{ color: 'var(--color-primary)' }}
+          >
+            ← Back
+          </button>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--color-text)' }}>Dashboard</h1>
         </div>
 
-        {loading && <p className="text-center text-[#9CA3AF]">Loading stats…</p>}
+        {loading && <p className="text-sm text-center py-8" style={{ color: 'var(--color-muted)' }}>Loading stats…</p>}
 
         {error && (
-          <div className="rounded-2xl p-6 text-center" style={card}>
-            <p className="text-[#9CA3AF]">Couldn't reach the server. 😅</p>
-            <p className="text-[#9CA3AF]/70 text-sm mt-1">Check that the backend is running and try again.</p>
+          <div className="rounded-xl p-6 text-center card">
+            <p style={{ color: 'var(--color-muted)' }}>Couldn't reach the server.</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>Check that the backend is running and try again.</p>
           </div>
         )}
 
         {stats && (
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 rounded-2xl p-6" style={card}>
-              <p className="text-[#9CA3AF] text-sm">Total Questions Asked</p>
-              <p className="text-5xl font-black" style={{ color: '#6C63FF' }}>{stats.totalQuestions || 0}</p>
-              <p className="text-[#9CA3AF] text-sm mt-1">children helped so far 🌟</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 rounded-xl p-5 card">
+              <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>Total Questions Asked</p>
+              <p className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>{stats.totalQuestions || 0}</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>children helped so far</p>
             </div>
 
-            <div className="rounded-2xl p-4" style={card}>
-              <p className="font-black text-white mb-3">By Subject</p>
-              {Object.keys(stats.bySubject || {}).length === 0 && <p className="text-[#9CA3AF] text-sm">No questions yet</p>}
-              {Object.entries(stats.bySubject || {}).map(([subject, count]) => (
-                <div key={subject} className="flex justify-between items-center mb-2">
-                  <span className="text-[#9CA3AF]">{subject}</span>
-                  <span className="font-black text-[#00D4FF]">{count}</span>
+            <div className="rounded-xl p-4 card">
+              <p className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>By Subject</p>
+              {Object.keys(stats.bySubject || {}).length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>No questions yet</p>
+              )}
+              {Object.entries(stats.bySubject || {}).map(([subj, count]) => (
+                <div key={subj} className="flex justify-between items-center mb-2">
+                  <span className="text-sm" style={{ color: 'var(--color-muted)' }}>{subj}</span>
+                  <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>{count}</span>
                 </div>
               ))}
             </div>
 
-            <div className="rounded-2xl p-4" style={card}>
-              <p className="font-black text-white mb-3">By Age Group</p>
-              {Object.keys(stats.byAge || {}).length === 0 && <p className="text-[#9CA3AF] text-sm">No questions yet</p>}
+            <div className="rounded-xl p-4 card">
+              <p className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>By Age Group</p>
+              {Object.keys(stats.byAge || {}).length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>No questions yet</p>
+              )}
               {Object.entries(stats.byAge || {}).map(([age, count]) => (
                 <div key={age} className="flex justify-between items-center mb-2">
-                  <span className="text-[#9CA3AF]">{age === 'little' ? '🐣 6-10' : '🦋 11-14'}</span>
-                  <span className="font-black text-[#00FF88]">{count}</span>
+                  <span className="text-sm" style={{ color: 'var(--color-muted)' }}>{age === 'little' ? '🐣 6–10' : '🦋 11–14'}</span>
+                  <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>{count}</span>
                 </div>
               ))}
             </div>
 
-            <div className="col-span-2 rounded-2xl p-4" style={card}>
-              <p className="font-black text-white mb-3">Recent Activity (last 7 days)</p>
-              {Object.keys(stats.byDate || {}).length === 0 && <p className="text-[#9CA3AF] text-sm">No activity yet</p>}
+            <div className="col-span-2 rounded-xl p-4 card">
+              <p className="font-semibold text-sm mb-3" style={{ color: 'var(--color-text)' }}>Recent Activity (last 7 days)</p>
+              {Object.keys(stats.byDate || {}).length === 0 && (
+                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>No activity yet</p>
+              )}
               {Object.entries(stats.byDate || {}).slice(-7).reverse().map(([date, count]) => (
                 <div key={date} className="flex justify-between items-center mb-2">
-                  <span className="text-[#9CA3AF]">{date}</span>
+                  <span className="text-sm" style={{ color: 'var(--color-muted)' }}>{date}</span>
                   <div className="flex items-center gap-2">
-                    <div className="h-2 rounded-full" style={{ width: `${Math.min(count * 10, 100)}px`, background: 'linear-gradient(90deg,#6C63FF,#00D4FF)' }} />
-                    <span className="font-black text-[#00D4FF]">{count}</span>
+                    <div className="h-1.5 rounded-full" style={{ width: `${Math.min(count * 10, 80)}px`, background: 'var(--color-primary)', opacity: 0.7 }} />
+                    <span className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>{count}</span>
                   </div>
                 </div>
               ))}
@@ -94,19 +103,18 @@ const Dashboard = ({ onBack }) => {
           </div>
         )}
 
-        {/* AI Impact Report */}
-        <div className="rounded-2xl p-5" style={card}>
+        <div className="rounded-xl p-5 card">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <p className="font-black text-white">🤖 AI Impact Report</p>
-              <p className="text-[#9CA3AF] text-xs mt-0.5">Generated by the Report Agent</p>
+              <p className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>AI Impact Report</p>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>Generated by the Report Agent</p>
             </div>
             <motion.button
               onClick={fetchReport}
               disabled={reportLoading}
-              className="px-4 py-2 rounded-xl font-bold text-sm text-white disabled:opacity-50"
-              style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
-              whileHover={{ scale: 1.04 }}
+              className="px-4 py-2 rounded-lg font-medium text-sm text-white disabled:opacity-50"
+              style={{ background: 'var(--color-primary)' }}
+              whileHover={{ opacity: 0.9 }}
               whileTap={{ scale: 0.97 }}
             >
               {reportLoading ? 'Generating…' : report ? 'Refresh' : 'Generate'}
@@ -120,24 +128,24 @@ const Dashboard = ({ onBack }) => {
                 animate={{ opacity: 1, y: 0 }}
                 className="flex flex-col gap-3 mt-2"
               >
-                <p className="text-[#FFD700] font-black text-lg">{report.headline}</p>
-                <p className="text-[#9CA3AF] text-sm leading-relaxed">{report.summary}</p>
+                <p className="font-semibold" style={{ color: 'var(--color-text)' }}>{report.headline}</p>
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>{report.summary}</p>
                 {report.highlights?.length > 0 && (
                   <ul className="flex flex-col gap-1">
                     {report.highlights.map((h, i) => (
-                      <li key={i} className="text-white text-sm flex gap-2">
-                        <span className="text-[#00FF88]">✓</span>{h}
+                      <li key={i} className="text-sm flex gap-2" style={{ color: 'var(--color-text)' }}>
+                        <span style={{ color: 'var(--color-primary)' }}>✓</span>{h}
                       </li>
                     ))}
                   </ul>
                 )}
                 {report.subjectInsight && (
-                  <p className="text-[#9CA3AF] text-xs italic">{report.subjectInsight}</p>
+                  <p className="text-xs italic" style={{ color: 'var(--color-muted)' }}>{report.subjectInsight}</p>
                 )}
                 {report.recommendation && (
-                  <div className="rounded-xl p-3" style={{ background: 'rgba(108,99,255,0.12)', border: '1px solid rgba(108,99,255,0.25)' }}>
-                    <p className="text-[#6C63FF] font-bold text-xs uppercase mb-1">Recommendation</p>
-                    <p className="text-white text-sm">{report.recommendation}</p>
+                  <div className="rounded-xl p-3" style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}>
+                    <p className="text-xs font-semibold uppercase mb-1" style={{ color: 'var(--color-primary)' }}>Recommendation</p>
+                    <p className="text-sm" style={{ color: 'var(--color-text)' }}>{report.recommendation}</p>
                   </div>
                 )}
               </motion.div>
