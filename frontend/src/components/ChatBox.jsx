@@ -253,8 +253,8 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
         <button
           onClick={() => sendMessage()}
           disabled={loading}
-          className="px-4 py-2 rounded-xl font-semibold text-white text-sm min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-          style={{ background: 'var(--color-primary)' }}
+          className="px-4 py-2 rounded-xl font-semibold text-sm min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
         >
           Send
         </button>

@@ -112,8 +112,8 @@ const Dashboard = ({ onBack }) => {
             <motion.button
               onClick={fetchReport}
               disabled={reportLoading}
-              className="px-4 py-2 rounded-lg font-medium text-sm text-white disabled:opacity-50"
-              style={{ background: 'var(--color-primary)' }}
+              className="px-4 py-2 rounded-lg font-medium text-sm disabled:opacity-50"
+              style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
               whileHover={{ opacity: 0.9 }}
               whileTap={{ scale: 0.97 }}
             >

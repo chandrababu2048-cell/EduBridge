@@ -9,13 +9,14 @@
 }
 
 :root {
-  --color-bg:       #FFFFFF;
-  --color-surface:  #F8F8F8;
-  --color-surface2: #F0F0F0;
-  --color-border:   rgba(0,0,0,0.08);
-  --color-primary:  #D4774A;
-  --color-text:     #1A1A1A;
-  --color-muted:    #888888;
+  --color-bg:           #FFFFFF;
+  --color-surface:      #F8F8F8;
+  --color-surface2:     #F0F0F0;
+  --color-border:       rgba(0,0,0,0.08);
+  --color-primary:      #02D8E9;
+  --color-primary-text: #003B40;
+  --color-text:         #1A1A1A;
+  --color-muted:        #888888;
 }
 
 body {

@@ -142,65 +142,67 @@ function App() {
             {view === 'welcome' && (
               <motion.div
                 key="welcome"
-                className="flex flex-col items-center justify-start flex-1 px-4 py-8 gap-6 max-w-xl mx-auto w-full"
+                className="flex-1 px-4 py-6 overflow-y-auto"
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -12 }}
               >
-                <motion.div className="text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
-                  <div className="text-4xl mb-2">🌉</div>
-                  <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>Welcome back</h2>
-                  <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem' }}>Choose a subject and start learning</p>
+                {/* Page header */}
+                <motion.div className="text-center mb-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.05 }}>
+                  <div className="text-3xl mb-1">🌉</div>
+                  <h2 className="text-xl font-bold mb-0.5" style={{ color: 'var(--color-text)' }}>Welcome back</h2>
+                  <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Choose a subject and start learning</p>
                 </motion.div>
 
-                <SubjectSelector subject={subject} setSubject={setSubject} />
-                <AgeLevelSelector ageLevel={ageLevel} setAgeLevel={setAgeLevel} />
+                {/* Two-column grid on desktop, stacked on mobile */}
+                <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-                <motion.button
-                  onClick={() => setView('chat')}
-                  className="w-full py-4 rounded-xl font-semibold text-white text-base"
-                  style={{ background: 'var(--color-primary)' }}
-                  whileHover={{ opacity: 0.9 }}
-                  whileTap={{ scale: 0.98 }}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  Start Learning
-                </motion.button>
+                  {/* LEFT — Subject + Age + Start */}
+                  <motion.div className="flex flex-col gap-5" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                    <SubjectSelector subject={subject} setSubject={setSubject} />
+                    <AgeLevelSelector ageLevel={ageLevel} setAgeLevel={setAgeLevel} />
+                    <motion.button
+                      onClick={() => setView('chat')}
+                      className="w-full py-3.5 rounded-xl font-semibold text-sm"
+                      style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
+                      whileHover={{ opacity: 0.88 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      Start Learning
+                    </motion.button>
+                  </motion.div>
 
-                <div className="w-full flex gap-3">
-                  <motion.button
-                    onClick={() => setView('quiz')}
-                    className="flex-1 py-3 rounded-xl font-semibold text-sm"
-                    style={{ background: 'var(--color-surface2)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
-                    whileHover={{ opacity: 0.8 }}
-                    whileTap={{ scale: 0.98 }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    🎯 Quick Quiz
-                  </motion.button>
-                  <motion.button
-                    onClick={() => setView('dashboard')}
-                    className="flex-1 py-3 rounded-xl font-semibold text-sm"
-                    style={{ background: 'var(--color-surface2)', color: 'var(--color-muted)', border: '1px solid var(--color-border)' }}
-                    whileHover={{ opacity: 0.8 }}
-                    whileTap={{ scale: 0.98 }}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.45 }}
-                  >
-                    📊 Dashboard
-                  </motion.button>
-                </div>
+                  {/* RIGHT — Quiz, Dashboard, Badges */}
+                  <motion.div className="flex flex-col gap-4" initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.15 }}>
+                    <div className="flex flex-col gap-2">
+                      <motion.button
+                        onClick={() => setView('quiz')}
+                        className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                        style={{ background: 'var(--color-surface2)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+                        whileHover={{ opacity: 0.8 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        🎯 Quick Quiz
+                      </motion.button>
+                      <motion.button
+                        onClick={() => setView('dashboard')}
+                        className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
+                        style={{ background: 'var(--color-surface2)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+                        whileHover={{ opacity: 0.8 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        📊 Dashboard
+                      </motion.button>
+                    </div>
 
-                <div className="w-full card p-4 flex flex-col gap-3">
-                  <BadgeCollection earned={earned} locked={locked} />
-                  {stats.totalQuestions >= 3 && (
-                    <StudyPlan stats={stats} ageLevel={ageLevel} onSelectSubject={setSubject} />
-                  )}
+                    <div className="card p-4 flex flex-col gap-3">
+                      <BadgeCollection earned={earned} locked={locked} />
+                      {stats.totalQuestions >= 3 && (
+                        <StudyPlan stats={stats} ageLevel={ageLevel} onSelectSubject={setSubject} />
+                      )}
+                    </div>
+                  </motion.div>
+
                 </div>
               </motion.div>
             )}

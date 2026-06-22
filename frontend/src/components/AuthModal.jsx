@@ -87,7 +87,7 @@ export const AuthModal = ({ onClose }) => {
                 className="flex-1 py-2.5 text-sm font-medium transition-colors"
                 style={{
                   background: tab === t ? 'var(--color-primary)' : 'transparent',
-                  color: tab === t ? '#fff' : 'var(--color-muted)',
+                  color: tab === t ? 'var(--color-primary-text)' : 'var(--color-muted)',
                 }}
               >
                 {t === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -109,8 +109,8 @@ export const AuthModal = ({ onClose }) => {
             <motion.button
               type="submit"
               disabled={loading || !email || !password}
-              className="py-3 rounded-xl font-semibold text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'var(--color-primary)' }}
+              className="py-3 rounded-xl font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
               whileHover={{ opacity: 0.9 }}
               whileTap={{ scale: 0.98 }}
             >

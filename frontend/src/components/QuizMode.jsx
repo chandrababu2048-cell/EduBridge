@@ -80,7 +80,7 @@ const QuizMode = ({ subject, ageLevel, onDone, playSound }) => {
       <motion.button
         onClick={onDone}
         className="px-8 py-3 rounded-xl font-semibold text-white mt-2"
-        style={{ background: 'var(--color-primary)' }}
+        style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
         whileHover={{ opacity: 0.9 }}
         whileTap={{ scale: 0.97 }}
       >

@@ -49,7 +49,7 @@ const MessageBubble = ({ role, text }) => {
       ) : (
         <div
           className="rounded-2xl rounded-tr-none px-4 py-3 max-w-[75%]"
-          style={{ background: 'var(--color-primary)', color: '#fff' }}
+          style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
         >
           <p>{text}</p>
         </div>

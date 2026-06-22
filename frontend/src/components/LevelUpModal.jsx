@@ -43,8 +43,8 @@ const LevelUpModal = ({ show, level, levelData, onClose }) => (
 
             <motion.button
               onClick={onClose}
-              className="w-full py-3 rounded-xl font-semibold text-white text-sm"
-              style={{ background: 'var(--color-primary)' }}
+              className="w-full py-3 rounded-xl font-semibold text-sm"
+              style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
               whileHover={{ opacity: 0.9 }}
               whileTap={{ scale: 0.97 }}
             >
