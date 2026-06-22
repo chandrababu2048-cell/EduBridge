@@ -112,7 +112,7 @@ function App() {
           >
             <div
               className="flex items-center gap-3 px-5 py-3 rounded-2xl"
-              style={{ background: '#111827', border: '1px solid rgba(255,215,0,0.5)', boxShadow: '0 0 30px rgba(255,215,0,0.35)' }}
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}
             >
               <span className="text-3xl">{justUnlocked.emoji}</span>
               <div>
