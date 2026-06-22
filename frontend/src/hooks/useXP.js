@@ -35,5 +35,16 @@ export const useXP = () => {
   const nextLevel = LEVELS.find((l) => l.level === level + 1);
   const nextLevelXP = nextLevel ? nextLevel.xpRequired : levelData.xpRequired;
 
-  return { xp, level, levelData, nextLevel, nextLevelXP, addXP, showLevelUp, setShowLevelUp, LEVELS };
+  // Called when cloud progress is loaded on login — silently takes the higher value
+  const setXPFromCloud = useCallback((cloudXP) => {
+    if (!Number.isFinite(cloudXP) || cloudXP <= 0) return;
+    setXP((prev) => {
+      if (cloudXP <= prev) return prev;
+      localStorage.setItem(STORAGE_KEY, String(cloudXP));
+      lastLevelRef.current = levelForXP(cloudXP).level;
+      return cloudXP;
+    });
+  }, []);
+
+  return { xp, level, levelData, nextLevel, nextLevelXP, addXP, showLevelUp, setShowLevelUp, setXPFromCloud, LEVELS };
 };

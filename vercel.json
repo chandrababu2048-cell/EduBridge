@@ -1,0 +1,13 @@
+{
+  "experimentalServices": {
+    "frontend": {
+      "root": "frontend",
+      "framework": "vite"
+    },
+    "backend": {
+      "root": "backend",
+      "buildCommand": "npm install",
+      "startCommand": "node server.js"
+    }
+  }
+}

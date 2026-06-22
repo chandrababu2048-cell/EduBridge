@@ -11,6 +11,11 @@ import StarBackground from './components/StarBackground';
 import LevelUpModal from './components/LevelUpModal';
 import BadgeCollection from './components/BadgeCollection';
 import ConfettiEffect from './components/ConfettiEffect';
+import { AuthModal } from './components/AuthModal';
+import QuizMode from './components/QuizMode';
+import StudyPlan from './components/StudyPlan';
+import { useAuth } from './contexts/AuthContext.jsx';
+import { supabase } from './lib/supabase.js';
 import { useXP } from './hooks/useXP';
 import { useStats } from './hooks/useStats';
 import { useBadges } from './hooks/useBadges';
@@ -21,12 +26,55 @@ function App() {
   const [subject, setSubject] = useState('Math');
   const [ageLevel, setAgeLevel] = useState('little');
   const [language, setLanguage] = useState('english');
-  const [view, setView] = useState('welcome'); // 'welcome' | 'chat' | 'dashboard'
+  const [view, setView] = useState('welcome'); // 'welcome' | 'chat' | 'dashboard' | 'quiz'
+  const [showAuth, setShowAuth] = useState(false);
 
-  const { xp, level, levelData, nextLevelXP, addXP, showLevelUp, setShowLevelUp } = useXP();
-  const { stats, recordQuestion } = useStats();
+  const { user, signOut } = useAuth();
+  const { xp, level, levelData, nextLevelXP, addXP, showLevelUp, setShowLevelUp, setXPFromCloud } = useXP();
+  const { stats, recordQuestion, setStatsFromCloud } = useStats();
   const { earned, locked, justUnlocked, clearUnlocked } = useBadges(stats);
   const { play, muted, toggleMute } = useSound();
+
+  // Load cloud progress when user logs in, merge with local (take the higher value)
+  useEffect(() => {
+    if (!user || !supabase) return;
+    supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return;
+        setXPFromCloud(data.xp);
+        setStatsFromCloud({
+          totalQuestions: data.total_questions,
+          streak: data.streak,
+          lastSubject: data.last_subject,
+          usedTelugu: data.used_telugu,
+          learnedEarly: data.learned_early,
+          bySubject: data.by_subject ?? {},
+        });
+      });
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync progress to Supabase whenever XP or stats change (debounced 1.5s)
+  useEffect(() => {
+    if (!user || !supabase) return;
+    const timer = setTimeout(() => {
+      supabase.from('user_progress').upsert({
+        user_id: user.id,
+        xp,
+        total_questions: stats.totalQuestions,
+        streak: stats.streak,
+        last_subject: stats.lastSubject,
+        used_telugu: stats.usedTelugu,
+        learned_early: stats.learnedEarly,
+        by_subject: stats.bySubject,
+        updated_at: new Date().toISOString(),
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [user?.id, xp, stats]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Award XP + record stats whenever a question is asked
   const handleQuestionAsked = ({ subject, language }) => {
@@ -85,6 +133,9 @@ function App() {
           nextLevelXP={nextLevelXP}
           muted={muted}
           onToggleMute={toggleMute}
+          user={user}
+          onSignInClick={() => setShowAuth(true)}
+          onSignOut={signOut}
         />
 
         <main className="flex-1 flex flex-col min-h-0">
@@ -131,9 +182,28 @@ function App() {
                   Start Learning! 🎮
                 </motion.button>
 
+                {/* Quiz + Badge row */}
+                <div className="w-full max-w-md flex gap-3">
+                  <motion.button
+                    onClick={() => setView('quiz')}
+                    className="flex-1 py-3 rounded-2xl font-black text-white text-sm relative overflow-hidden"
+                    style={{ background: 'linear-gradient(135deg, #FF6B6B, #FFD700)', boxShadow: '0 0 20px rgba(255,107,107,0.4)' }}
+                    whileHover={{ scale: 1.04 }}
+                    whileTap={{ scale: 0.96 }}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    Test Me! 🎯
+                  </motion.button>
+                </div>
+
                 {/* Badge collection */}
-                <div className="w-full max-w-md mt-2 glass p-5">
+                <div className="w-full max-w-md glass p-5 flex flex-col gap-4">
                   <BadgeCollection earned={earned} locked={locked} />
+                  {stats.totalQuestions >= 3 && (
+                    <StudyPlan stats={stats} ageLevel={ageLevel} onSelectSubject={setSubject} />
+                  )}
                 </div>
 
                 {/* Teacher link */}
@@ -171,11 +241,24 @@ function App() {
                 <Dashboard onBack={() => setView('welcome')} />
               </motion.div>
             )}
+
+            {view === 'quiz' && (
+              <motion.div key="quiz" className="flex-1 flex flex-col min-h-0" initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}>
+                <div className="bg-[#111827]/80 backdrop-blur px-4 py-3 border-b border-white/10 flex items-center gap-3">
+                  <button onClick={() => setView('welcome')} className="text-[#00D4FF] font-bold min-h-[48px] px-2">← Back</button>
+                  <span className="font-black text-white">🎯 Quick Quiz — {subject}</span>
+                </div>
+                <QuizMode subject={subject} ageLevel={ageLevel} onDone={() => setView('welcome')} playSound={play} />
+              </motion.div>
+            )}
           </AnimatePresence>
         </main>
       </div>
 
       <LevelUpModal show={showLevelUp} level={level} levelData={levelData} onClose={() => setShowLevelUp(false)} />
+
+      {/* Auth modal */}
+      {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </div>
   );
 }

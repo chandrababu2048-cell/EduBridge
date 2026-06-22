@@ -11,6 +11,16 @@ import { SUBJECT_THEMES } from '../subjectThemes';
 const SpeechRecognition =
   typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
 
+const LANGUAGES = [
+  { code: 'english',  label: 'English',  native: 'English',  flag: '🇺🇸', speech: 'en-US' },
+  { code: 'hindi',    label: 'Hindi',    native: 'हिंदी',    flag: '🇮🇳', speech: 'hi-IN' },
+  { code: 'telugu',   label: 'Telugu',   native: 'తెలుగు',   flag: '🇮🇳', speech: 'te-IN' },
+  { code: 'tamil',    label: 'Tamil',    native: 'தமிழ்',    flag: '🇮🇳', speech: 'ta-IN' },
+  { code: 'kannada',  label: 'Kannada',  native: 'ಕನ್ನಡ',   flag: '🇮🇳', speech: 'kn-IN' },
+  { code: 'bengali',  label: 'Bengali',  native: 'বাংলা',    flag: '🇮🇳', speech: 'bn-IN' },
+  { code: 'marathi',  label: 'Marathi',  native: 'मराठी',    flag: '🇮🇳', speech: 'mr-IN' },
+];
+
 const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionAsked, playSound }) => {
   const theme = SUBJECT_THEMES[subject];
 
@@ -22,8 +32,11 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
   const [listening, setListening] = useState(false);
   const [mascotState, setMascotState] = useState('idle');
   const [answerConfetti, setAnswerConfetti] = useState(null);
+  const [showLangPicker, setShowLangPicker] = useState(false);
   const bottomRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
   const showExamples = messages.length === 1 && !loading;
 
@@ -40,10 +53,38 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
     setLoading(true);
     setMascotState('thinking');
 
-    // Reward the child (XP + stats + sound handled in App)
-    onQuestionAsked?.({ subject, language });
-
     try {
+      // Safety check before reaching the tutor
+      const safetyRes = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/safety-check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage, ageLevel }),
+      }).catch(() => null);
+      const safety = safetyRes?.ok ? await safetyRes.json() : { status: 'safe' };
+
+      if (safety.status === 'distress') {
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          text: "I hear you, and I'm really glad you told me. 💙 What you're feeling matters, and it is NOT your fault. Please talk to a trusted adult — a parent, teacher, or school counsellor — right away. You can also call Childline India FREE at 1098, any time, day or night. You are not alone, and help is there for you. 🌟"
+        }]);
+        setMascotState('idle');
+        setLoading(false);
+        return;
+      }
+
+      if (safety.status === 'inappropriate') {
+        setMessages((prev) => [...prev, {
+          role: 'assistant',
+          text: "Hmm, that's not something I can help with! 😊 But I'd love to teach you something amazing — ask me about Math, Science, English, or any of our subjects!"
+        }]);
+        setMascotState('idle');
+        setLoading(false);
+        return;
+      }
+
+      // Safe — reward the child and call the tutor
+      onQuestionAsked?.({ subject, language });
+
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -74,7 +115,7 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = language === 'telugu' ? 'te-IN' : 'en-US';
+    recognition.lang = currentLang.speech;
     recognition.interimResults = false;
     recognition.maxAlternatives = 1;
     recognition.onresult = (event) => setInput(event.results[0][0].transcript);
@@ -95,12 +136,33 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
           ← Back
         </button>
         <span className="font-black text-white text-lg">{theme.emoji} {subject}</span>
-        <button
-          onClick={() => setLanguage(language === 'english' ? 'telugu' : 'english')}
-          className="flex items-center gap-1 bg-[#FFD700]/15 border border-[#FFD700]/30 text-[#FFD700] px-3 py-2 rounded-full text-sm font-bold hover:bg-[#FFD700]/25 transition-all min-h-[40px]"
-        >
-          {language === 'english' ? '🇮🇳 తెలుగు' : '🇺🇸 English'}
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowLangPicker(p => !p)}
+            className="flex items-center gap-1 bg-[#FFD700]/15 border border-[#FFD700]/30 text-[#FFD700] px-3 py-2 rounded-full text-sm font-bold hover:bg-[#FFD700]/25 transition-all min-h-[40px]"
+          >
+            {currentLang.flag} {currentLang.native}
+          </button>
+          {showLangPicker && (
+            <div
+              className="absolute right-0 top-12 z-50 rounded-2xl overflow-hidden shadow-2xl"
+              style={{ background: '#1F2937', border: '1px solid rgba(255,255,255,0.12)', minWidth: '160px' }}
+            >
+              {LANGUAGES.map(lang => (
+                <button
+                  key={lang.code}
+                  onClick={() => { setLanguage(lang.code); setShowLangPicker(false); }}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-left transition-all hover:bg-white/10"
+                  style={{ color: lang.code === language ? '#FFD700' : '#9CA3AF' }}
+                >
+                  <span>{lang.flag}</span>
+                  <span>{lang.native}</span>
+                  <span className="text-xs ml-auto opacity-60">{lang.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Mascot */}

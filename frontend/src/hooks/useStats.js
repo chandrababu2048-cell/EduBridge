@@ -43,5 +43,20 @@ export const useStats = () => {
     });
   }, []);
 
-  return { stats, recordQuestion };
+  // Called when cloud progress is loaded on login — silently takes the higher value
+  const setStatsFromCloud = useCallback((cloudStats) => {
+    if (!cloudStats || (cloudStats.totalQuestions ?? 0) === 0) return;
+    setStats((prev) => {
+      if ((cloudStats.totalQuestions ?? 0) <= prev.totalQuestions) return prev;
+      const next = {
+        ...emptyStats(),
+        ...cloudStats,
+        bySubject: { ...emptyStats().bySubject, ...cloudStats.bySubject },
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  return { stats, recordQuestion, setStatsFromCloud };
 };
