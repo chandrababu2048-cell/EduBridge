@@ -12,6 +12,9 @@ import morgan from 'morgan';
 import chatRouter from './routes/chat.js';
 import analyticsRouter from './routes/analytics.js';
 import agentsRouter from './routes/agents.js';
+import teacherRouter from './routes/teacher.js';
+import studentRouter from './routes/student.js';
+import publicRouter from './routes/public.js';
 
 const app = express();
 
@@ -42,6 +45,11 @@ app.use('/api', limiter);
 app.use('/api', chatRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/agents', agentsRouter);
+
+// Teacher, student, and public routes
+app.use('/api/teacher', teacherRouter);
+app.use('/api/student', studentRouter);
+app.use('/api/public', publicRouter);
 
 // Health check endpoint — used by the runbook to confirm the service is alive
 app.get('/health', (req, res) => {
