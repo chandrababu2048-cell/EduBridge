@@ -53,7 +53,8 @@ const Mascot = ({ state = 'idle', subject, size = 'text-6xl' }) => {
       <AnimatePresence mode="wait">
         <motion.div
           key={state}
-          className="bg-[#1F2937] border border-[#6C63FF]/30 rounded-2xl px-4 py-2 text-sm text-white font-bold"
+          className="rounded-2xl px-4 py-2 text-sm font-medium"
+          style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
           initial={{ opacity: 0, scale: 0.8, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8 }}

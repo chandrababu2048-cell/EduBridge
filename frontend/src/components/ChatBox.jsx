@@ -131,33 +131,38 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
       <ConfettiEffect trigger={answerConfetti} type="normal" />
 
       {/* Top bar */}
-      <div className="bg-[#111827]/80 backdrop-blur px-4 py-3 flex items-center justify-between border-b border-white/10">
-        <button onClick={onBack} className="text-[#00D4FF] font-bold flex items-center gap-1 min-h-[48px] px-2">
+      <div className="px-4 py-3 flex items-center justify-between" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
+        <button
+          onClick={onBack}
+          className="font-medium flex items-center gap-1 min-h-[44px] px-2 text-sm transition-colors"
+          style={{ color: 'var(--color-primary)' }}
+        >
           ← Back
         </button>
-        <span className="font-black text-white text-lg">{theme.emoji} {subject}</span>
+        <span className="font-semibold text-base" style={{ color: 'var(--color-text)' }}>{theme.emoji} {subject}</span>
         <div className="relative">
           <button
             onClick={() => setShowLangPicker(p => !p)}
-            className="flex items-center gap-1 bg-[#FFD700]/15 border border-[#FFD700]/30 text-[#FFD700] px-3 py-2 rounded-full text-sm font-bold hover:bg-[#FFD700]/25 transition-all min-h-[40px]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-h-[36px]"
+            style={{ color: 'var(--color-text)', border: '1px solid var(--color-border)', background: 'var(--color-surface2)' }}
           >
             {currentLang.flag} {currentLang.native}
           </button>
           {showLangPicker && (
             <div
-              className="absolute right-0 top-12 z-50 rounded-2xl overflow-hidden shadow-2xl"
-              style={{ background: '#1F2937', border: '1px solid rgba(255,255,255,0.12)', minWidth: '160px' }}
+              className="absolute right-0 top-10 z-50 rounded-xl overflow-hidden shadow-xl"
+              style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)', minWidth: '160px' }}
             >
               {LANGUAGES.map(lang => (
                 <button
                   key={lang.code}
                   onClick={() => { setLanguage(lang.code); setShowLangPicker(false); }}
-                  className="w-full flex items-center gap-2 px-4 py-3 text-sm font-bold text-left transition-all hover:bg-white/10"
-                  style={{ color: lang.code === language ? '#FFD700' : '#9CA3AF' }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-left transition-colors"
+                  style={{ color: lang.code === language ? 'var(--color-primary)' : 'var(--color-muted)', fontWeight: lang.code === language ? 600 : 400 }}
                 >
                   <span>{lang.flag}</span>
                   <span>{lang.native}</span>
-                  <span className="text-xs ml-auto opacity-60">{lang.label}</span>
+                  <span className="text-xs ml-auto opacity-50">{lang.label}</span>
                 </button>
               ))}
             </div>
@@ -177,21 +182,21 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
         ))}
 
         {showExamples && (
-          <div className="flex flex-col gap-2 animate-fadeIn">
-            <p className="text-[#9CA3AF] text-sm font-bold ml-1">✨ Try asking:</p>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm ml-1 font-medium" style={{ color: 'var(--color-muted)' }}>Try asking:</p>
             <div className="flex flex-wrap gap-2">
               {theme.examples.map((q) => (
                 <motion.button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="rounded-full px-4 py-2 text-sm font-bold min-h-[40px]"
+                  className="rounded-lg px-3 py-2 text-sm font-medium min-h-[36px] transition-colors"
                   style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: `1.5px solid ${theme.color}`,
-                    color: theme.color
+                    background: 'var(--color-surface2)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text)',
                   }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  whileHover={{ opacity: 0.8 }}
+                  whileTap={{ scale: 0.97 }}
                 >
                   {q}
                 </motion.button>
@@ -201,13 +206,13 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
         )}
 
         {loading && (
-          <div className="flex gap-2 items-center animate-fadeIn">
-            <span className="text-2xl">🦉</span>
-            <div className="rounded-2xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-[#6C63FF] rounded-full animate-bounce"></span>
-                <span className="w-2 h-2 bg-[#00D4FF] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></span>
-                <span className="w-2 h-2 bg-[#00FF88] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></span>
+          <div className="flex gap-2 items-center">
+            <span className="text-xl">🦉</span>
+            <div className="rounded-2xl rounded-tl-none px-4 py-3" style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}>
+              <div className="flex gap-1 items-center">
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--color-muted)' }}></span>
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--color-muted)', animationDelay: '0.15s' }}></span>
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ background: 'var(--color-muted)', animationDelay: '0.3s' }}></span>
               </div>
             </div>
           </div>
@@ -216,25 +221,29 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
       </div>
 
       {/* Input bar */}
-      <div className="bg-[#111827]/80 backdrop-blur border-t border-white/10 px-4 py-3 flex gap-2 max-w-2xl w-full mx-auto">
+      <div className="px-4 py-3 flex gap-2 max-w-2xl w-full mx-auto" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-          placeholder={listening ? 'Listening… speak now! 🎤' : 'Ask me anything! 💬'}
-          className="flex-1 rounded-full px-4 py-3 text-base outline-none min-h-[48px] text-white placeholder-[#9CA3AF]"
-          style={{ background: 'rgba(255,255,255,0.05)', border: '2px solid #6C63FF' }}
+          placeholder={listening ? 'Listening…' : 'Ask me anything…'}
+          className="flex-1 rounded-xl px-4 py-3 text-sm outline-none min-h-[44px] transition-colors"
+          style={{
+            background: 'var(--color-surface2)',
+            border: '1px solid var(--color-border)',
+            color: 'var(--color-text)',
+          }}
         />
 
         {SpeechRecognition && (
           <button
             onClick={toggleMic}
             aria-label={listening ? 'Stop listening' : 'Ask with your voice'}
-            className={`px-4 py-3 rounded-full font-bold min-h-[48px] transition-all ${listening ? 'animate-pulse' : ''}`}
+            className={`px-3 py-2 rounded-xl min-h-[44px] transition-all ${listening ? 'animate-pulse' : ''}`}
             style={{
-              background: listening ? '#FF6B6B' : 'rgba(0,255,136,0.15)',
-              border: '1.5px solid #00FF88',
-              color: listening ? '#fff' : '#00FF88'
+              background: listening ? 'rgba(212,119,74,0.2)' : 'var(--color-surface2)',
+              border: '1px solid var(--color-border)',
+              color: listening ? 'var(--color-primary)' : 'var(--color-muted)',
             }}
           >
             🎤
@@ -244,10 +253,10 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
         <button
           onClick={() => sendMessage()}
           disabled={loading}
-          className="px-5 py-3 rounded-full font-black text-white min-h-[48px] disabled:opacity-50 disabled:cursor-not-allowed"
-          style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)', boxShadow: '0 0 18px rgba(108,99,255,0.5)' }}
+          className="px-4 py-2 rounded-xl font-semibold text-white text-sm min-h-[44px] disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+          style={{ background: 'var(--color-primary)' }}
         >
-          Send 🚀
+          Send
         </button>
       </div>
     </div>

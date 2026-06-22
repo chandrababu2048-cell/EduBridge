@@ -98,8 +98,7 @@ function App() {
   }, [justUnlocked]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-animated">
-      <StarBackground />
+    <div className="min-h-screen relative overflow-hidden" style={{ background: 'var(--color-bg)' }}>
 
       {/* Badge unlock celebration */}
       <ConfettiEffect trigger={justUnlocked?.id ?? null} type="badge" />
@@ -113,7 +112,7 @@ function App() {
           >
             <div
               className="flex items-center gap-3 px-5 py-3 rounded-2xl"
-              style={{ background: '#111827', border: '1px solid rgba(255,215,0,0.5)', boxShadow: '0 0 30px rgba(255,215,0,0.35)' }}
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: '0 4px 24px rgba(0,0,0,0.12)' }}
             >
               <span className="text-3xl">{justUnlocked.emoji}</span>
               <div>
@@ -143,21 +142,15 @@ function App() {
             {view === 'welcome' && (
               <motion.div
                 key="welcome"
-                className="flex flex-col items-center justify-start flex-1 p-6 gap-7"
-                initial={{ opacity: 0, scale: 0.97 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.97 }}
+                className="flex flex-col items-center justify-start flex-1 px-4 py-8 gap-6 max-w-xl mx-auto w-full"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
               >
-                <motion.div className="text-center mt-2" initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                  <motion.div
-                    className="text-6xl mb-3"
-                    animate={{ rotate: [0, -10, 10, 0] }}
-                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                  >
-                    🌉
-                  </motion.div>
-                  <h2 className="text-3xl font-black text-white mb-1">Welcome back! 👋</h2>
-                  <p className="text-[#9CA3AF]">Your AI Learning Adventure awaits 🚀</p>
+                <motion.div className="text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}>
+                  <div className="text-4xl mb-2">🌉</div>
+                  <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>Welcome back</h2>
+                  <p style={{ color: 'var(--color-muted)', fontSize: '0.9rem' }}>Choose a subject and start learning</p>
                 </motion.div>
 
                 <SubjectSelector subject={subject} setSubject={setSubject} />
@@ -165,54 +158,50 @@ function App() {
 
                 <motion.button
                   onClick={() => setView('chat')}
-                  className="px-10 py-5 rounded-2xl font-black text-white text-xl relative overflow-hidden"
-                  style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)', boxShadow: '0 0 30px rgba(108, 99, 255, 0.5)' }}
-                  whileHover={{ scale: 1.05, boxShadow: '0 0 50px rgba(108, 99, 255, 0.8)' }}
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ opacity: 0, y: 20 }}
+                  className="w-full py-4 rounded-xl font-semibold text-white text-base"
+                  style={{ background: 'var(--color-primary)' }}
+                  whileHover={{ opacity: 0.9 }}
+                  whileTap={{ scale: 0.98 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  <motion.div
-                    className="absolute inset-0 opacity-30"
-                    style={{ background: 'linear-gradient(135deg, transparent, rgba(255,255,255,0.3), transparent)' }}
-                    animate={{ x: ['-100%', '100%'] }}
-                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                  />
-                  Start Learning! 🎮
+                  Start Learning
                 </motion.button>
 
-                {/* Quiz + Badge row */}
-                <div className="w-full max-w-md flex gap-3">
+                <div className="w-full flex gap-3">
                   <motion.button
                     onClick={() => setView('quiz')}
-                    className="flex-1 py-3 rounded-2xl font-black text-white text-sm relative overflow-hidden"
-                    style={{ background: 'linear-gradient(135deg, #FF6B6B, #FFD700)', boxShadow: '0 0 20px rgba(255,107,107,0.4)' }}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.96 }}
-                    initial={{ opacity: 0, y: 20 }}
+                    className="flex-1 py-3 rounded-xl font-semibold text-sm"
+                    style={{ background: 'var(--color-surface2)', color: 'var(--color-text)', border: '1px solid var(--color-border)' }}
+                    whileHover={{ opacity: 0.8 }}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
+                    transition={{ delay: 0.4 }}
                   >
-                    Test Me! 🎯
+                    🎯 Quick Quiz
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setView('dashboard')}
+                    className="flex-1 py-3 rounded-xl font-semibold text-sm"
+                    style={{ background: 'var(--color-surface2)', color: 'var(--color-muted)', border: '1px solid var(--color-border)' }}
+                    whileHover={{ opacity: 0.8 }}
+                    whileTap={{ scale: 0.98 }}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.45 }}
+                  >
+                    📊 Dashboard
                   </motion.button>
                 </div>
 
-                {/* Badge collection */}
-                <div className="w-full max-w-md glass p-5 flex flex-col gap-4">
+                <div className="w-full card p-4 flex flex-col gap-3">
                   <BadgeCollection earned={earned} locked={locked} />
                   {stats.totalQuestions >= 3 && (
                     <StudyPlan stats={stats} ageLevel={ageLevel} onSelectSubject={setSubject} />
                   )}
                 </div>
-
-                {/* Teacher link */}
-                <button
-                  onClick={() => setView('dashboard')}
-                  className="text-[#9CA3AF] text-sm font-bold hover:text-[#00D4FF] transition-colors"
-                >
-                  📊 For teachers: view usage stats
-                </button>
               </motion.div>
             )}
 
@@ -244,9 +233,9 @@ function App() {
 
             {view === 'quiz' && (
               <motion.div key="quiz" className="flex-1 flex flex-col min-h-0" initial={{ opacity: 0, x: 60 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -60 }}>
-                <div className="bg-[#111827]/80 backdrop-blur px-4 py-3 border-b border-white/10 flex items-center gap-3">
-                  <button onClick={() => setView('welcome')} className="text-[#00D4FF] font-bold min-h-[48px] px-2">← Back</button>
-                  <span className="font-black text-white">🎯 Quick Quiz — {subject}</span>
+                <div className="px-4 py-3 flex items-center gap-3" style={{ background: 'var(--color-surface)', borderBottom: '1px solid var(--color-border)' }}>
+                  <button onClick={() => setView('welcome')} className="font-medium text-sm min-h-[44px] px-2" style={{ color: 'var(--color-primary)' }}>← Back</button>
+                  <span className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>Quick Quiz — {subject}</span>
                 </div>
                 <QuizMode subject={subject} ageLevel={ageLevel} onDone={() => setView('welcome')} playSound={play} />
               </motion.div>

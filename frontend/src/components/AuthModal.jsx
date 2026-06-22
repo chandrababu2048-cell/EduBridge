@@ -3,14 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
 const Field = ({ label, type, value, onChange, placeholder }) => (
-  <div className="flex flex-col gap-1">
-    <label className="text-[#9CA3AF] text-xs font-bold uppercase tracking-wide">{label}</label>
+  <div className="flex flex-col gap-1.5">
+    <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>{label}</label>
     <input
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:border-[#6C63FF] transition-colors text-sm"
+      className="rounded-xl px-4 py-3 text-sm outline-none transition-colors"
+      style={{
+        background: 'var(--color-surface2)',
+        border: '1px solid var(--color-border)',
+        color: 'var(--color-text)',
+      }}
       autoComplete={type === 'password' ? 'current-password' : 'email'}
     />
   </div>
@@ -53,38 +58,36 @@ export const AuthModal = ({ onClose }) => {
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex items-center justify-center p-4"
-        style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
-          className="w-full max-w-sm rounded-3xl p-8 flex flex-col gap-6"
-          style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 0 60px rgba(108,99,255,0.3)' }}
+          className="w-full max-w-sm rounded-2xl p-8 flex flex-col gap-5"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
           initial={{ scale: 0.92, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.92, y: 20 }}
         >
-          {/* Logo */}
           <div className="text-center">
-            <div className="text-4xl mb-2">🌉</div>
-            <h2 className="text-xl font-black text-white">
-              Edu<span style={{ color: '#6C63FF' }}>Bridge</span>
+            <div className="text-3xl mb-2">🌉</div>
+            <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+              Edu<span style={{ color: 'var(--color-primary)' }}>Bridge</span>
             </h2>
-            <p className="text-[#9CA3AF] text-sm mt-1">Save your progress across devices</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>Save your progress across devices</p>
           </div>
 
-          {/* Tabs */}
-          <div className="flex rounded-xl overflow-hidden border border-white/10">
+          <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
             {['signin', 'signup'].map((t) => (
               <button
                 key={t}
                 onClick={() => { setTab(t); reset(); }}
-                className="flex-1 py-2.5 text-sm font-bold transition-colors"
+                className="flex-1 py-2.5 text-sm font-medium transition-colors"
                 style={{
-                  background: tab === t ? 'linear-gradient(135deg, #6C63FF, #00D4FF)' : 'transparent',
-                  color: tab === t ? '#fff' : '#9CA3AF',
+                  background: tab === t ? 'var(--color-primary)' : 'transparent',
+                  color: tab === t ? '#fff' : 'var(--color-muted)',
                 }}
               >
                 {t === 'signin' ? 'Sign In' : 'Sign Up'}
@@ -92,7 +95,6 @@ export const AuthModal = ({ onClose }) => {
             ))}
           </div>
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" />
             <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="••••••••" />
@@ -107,21 +109,21 @@ export const AuthModal = ({ onClose }) => {
             <motion.button
               type="submit"
               disabled={loading || !email || !password}
-              className="py-3 rounded-xl font-black text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)' }}
-              whileHover={{ scale: 1.02 }}
+              className="py-3 rounded-xl font-semibold text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'var(--color-primary)' }}
+              whileHover={{ opacity: 0.9 }}
               whileTap={{ scale: 0.98 }}
             >
-              {loading ? '...' : tab === 'signin' ? 'Sign In & Sync Progress' : 'Create Account'}
+              {loading ? '…' : tab === 'signin' ? 'Sign In & Sync Progress' : 'Create Account'}
             </motion.button>
           </form>
 
-          {/* Guest option */}
           <button
             onClick={onClose}
-            className="text-[#9CA3AF] text-xs text-center hover:text-white transition-colors"
+            className="text-xs text-center transition-colors"
+            style={{ color: 'var(--color-muted)' }}
           >
-            Continue as guest (progress stays on this device)
+            Continue as guest
           </button>
         </motion.div>
       </motion.div>

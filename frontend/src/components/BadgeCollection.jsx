@@ -1,4 +1,3 @@
-// BadgeCollection — a grid of all badges, showing which are earned vs locked.
 import { motion } from 'framer-motion';
 
 const BadgeCollection = ({ earned, locked }) => {
@@ -8,28 +7,27 @@ const BadgeCollection = ({ earned, locked }) => {
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-white font-black text-lg">🏅 Your Badges</h3>
-        <span className="text-[#9CA3AF] text-sm font-bold">{earned.length}/{all.length}</span>
+        <h3 className="font-semibold text-sm" style={{ color: 'var(--color-text)' }}>Badges</h3>
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>{earned.length}/{all.length}</span>
       </div>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-4 gap-2">
         {all.map((badge, i) => {
           const isEarned = earnedIds.has(badge.id);
           return (
             <motion.div
               key={badge.id}
-              className="flex flex-col items-center text-center rounded-2xl p-3 border"
+              className="flex flex-col items-center text-center rounded-xl p-2.5"
               style={{
-                background: isEarned ? 'rgba(108,99,255,0.12)' : 'rgba(255,255,255,0.03)',
-                borderColor: isEarned ? 'rgba(108,99,255,0.4)' : 'rgba(255,255,255,0.08)',
-                boxShadow: isEarned ? '0 0 16px rgba(108,99,255,0.25)' : 'none'
+                background: isEarned ? 'rgba(212,119,74,0.1)' : 'var(--color-surface2)',
+                border: `1px solid ${isEarned ? 'rgba(212,119,74,0.35)' : 'var(--color-border)'}`,
               }}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: i * 0.04 }}
               title={badge.description}
             >
-              <span className={`text-3xl mb-1 ${isEarned ? '' : 'grayscale opacity-40'}`}>{badge.emoji}</span>
-              <span className={`text-[10px] font-bold leading-tight ${isEarned ? 'text-white' : 'text-[#9CA3AF]'}`}>
+              <span className={`text-2xl mb-1 ${isEarned ? '' : 'grayscale opacity-30'}`}>{badge.emoji}</span>
+              <span className="text-[10px] leading-tight" style={{ color: isEarned ? 'var(--color-text)' : 'var(--color-muted)' }}>
                 {badge.name}
               </span>
             </motion.div>

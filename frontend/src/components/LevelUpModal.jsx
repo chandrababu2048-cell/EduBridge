@@ -1,4 +1,3 @@
-// LevelUpModal — full-screen celebration when the child reaches a new level.
 import { motion, AnimatePresence } from 'framer-motion';
 import ConfettiEffect from './ConfettiEffect';
 
@@ -8,46 +7,48 @@ const LevelUpModal = ({ show, level, levelData, onClose }) => (
       <>
         <ConfettiEffect trigger={show ? `level-${level}` : null} type="levelup" />
         <motion.div
-          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
           <motion.div
-            className="bg-[#111827] border border-[#6C63FF]/50 rounded-3xl p-8 mx-4 text-center max-w-sm"
-            style={{ boxShadow: '0 0 60px rgba(108, 99, 255, 0.4)' }}
-            initial={{ scale: 0, rotate: -10 }}
-            animate={{ scale: 1, rotate: 0 }}
-            exit={{ scale: 0 }}
-            transition={{ type: 'spring', bounce: 0.5 }}
+            className="w-full max-w-sm rounded-2xl p-8 text-center flex flex-col gap-4"
+            style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
+            initial={{ scale: 0.85, y: 20 }}
+            animate={{ scale: 1, y: 0 }}
+            exit={{ scale: 0.85, y: 20 }}
+            transition={{ type: 'spring', bounce: 0.35 }}
             onClick={(e) => e.stopPropagation()}
           >
             <motion.div
-              className="text-8xl mb-4"
-              animate={{ rotate: [0, -10, 10, -10, 0], scale: [1, 1.2, 1] }}
-              transition={{ duration: 0.8, delay: 0.3 }}
+              className="text-7xl"
+              animate={{ scale: [1, 1.15, 1] }}
+              transition={{ duration: 0.6, delay: 0.2 }}
             >
               {levelData?.emoji}
             </motion.div>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <p className="text-[#6C63FF] font-black text-sm uppercase tracking-widest mb-2">⬆️ Level Up!</p>
-              <h2 className="text-white font-black text-3xl mb-1">Level {level}</h2>
-              <p className="text-[#00D4FF] font-bold text-xl mb-6">{levelData?.name}</p>
-              <p className="text-[#9CA3AF] text-sm mb-6">
-                You're on fire! Keep asking questions to unlock more rewards! 🔥
-              </p>
-            </motion.div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-1" style={{ color: 'var(--color-primary)' }}>Level Up!</p>
+              <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>Level {level}</h2>
+              <p className="text-base font-medium" style={{ color: 'var(--color-muted)' }}>{levelData?.name}</p>
+            </div>
+
+            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              Keep asking questions to unlock more rewards!
+            </p>
 
             <motion.button
               onClick={onClose}
-              className="w-full py-4 rounded-2xl font-black text-white text-lg"
-              style={{ background: 'linear-gradient(135deg, #6C63FF, #00D4FF)', boxShadow: '0 0 20px rgba(108, 99, 255, 0.5)' }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              className="w-full py-3 rounded-xl font-semibold text-white text-sm"
+              style={{ background: 'var(--color-primary)' }}
+              whileHover={{ opacity: 0.9 }}
+              whileTap={{ scale: 0.97 }}
             >
-              Keep Learning! 🚀
+              Keep Learning
             </motion.button>
           </motion.div>
         </motion.div>

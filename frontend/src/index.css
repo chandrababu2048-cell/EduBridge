@@ -1,49 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Nunito everywhere — friendly, rounded, readable */
 * {
-  font-family: 'Nunito', sans-serif;
+  font-family: 'Inter', sans-serif;
 }
 
-/* V3 dark "space" theme */
 :root {
-  --color-bg: #0A0E1A;
-  --color-surface: #111827;
-  --color-primary: #6C63FF;
-  --color-secondary: #00D4FF;
-  --color-accent: #FFD700;
+  --color-bg:       #FFFFFF;
+  --color-surface:  #F8F8F8;
+  --color-surface2: #F0F0F0;
+  --color-border:   rgba(0,0,0,0.08);
+  --color-primary:  #D4774A;
+  --color-text:     #1A1A1A;
+  --color-muted:    #888888;
 }
 
 body {
   background-color: var(--color-bg);
-  color: #F9FAFB;
+  color: var(--color-text);
 }
 
-/* Glow helpers */
-.glow-purple { box-shadow: 0 0 20px rgba(108, 99, 255, 0.5); }
-.glow-cyan   { box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
-.glow-gold   { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
-
-/* Glassmorphism card */
-.glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 24px;
+/* Clean card surface */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
 }
 
-/* Fade-in for new chat messages */
+.card-elevated {
+  background: var(--color-surface2);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+}
+
+/* Fade-in for chat messages */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.animate-fadeIn { animation: fadeIn 0.3s ease-out; }
+.animate-fadeIn { animation: fadeIn 0.25s ease-out; }
 
-/* Floating celebration toast */
 @keyframes floatUp {
   0%   { opacity: 0; transform: translate(-50%, 10px) scale(0.9); }
   20%  { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -51,15 +50,3 @@ body {
   100% { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
 }
 .animate-floatUp { animation: floatUp 1.4s ease-out forwards; }
-
-/* Animated gradient background (used on the page wrapper) */
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-.bg-animated {
-  background: linear-gradient(135deg, #0A0E1A, #111827, #1a0a2e);
-  background-size: 200% 200%;
-  animation: gradientShift 12s ease infinite;
-}
