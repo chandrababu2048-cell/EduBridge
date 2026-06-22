@@ -16,5 +16,8 @@ backend/data/
 # Vite temp files
 *.timestamp-*.mjs
 
+# Claude Code local tooling & agent worktrees
+.claude/
+
 # OS files
 .DS_Store
