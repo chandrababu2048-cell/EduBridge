@@ -14,8 +14,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 import SubjectBar from '../components/teacher/SubjectBar';
-
-const API = import.meta.env.VITE_API_URL ?? '';
+import { supabase } from '../lib/supabase.js';
 
 const SUBJECT_EMOJI = {
   Math: '📐', Science: '🔬', English: '📖',
@@ -100,34 +99,53 @@ export default function ClassDetail() {
   const [sortAsc, setSortAsc] = useState(false);
 
   const fetchData = useCallback(async () => {
+    if (!supabase) return;
     setLoading(true);
     try {
-      const [clsRes, progressRes] = await Promise.all([
-        fetch(`${API}/api/teacher/class/${classId}`),
-        fetch(`${API}/api/teacher/class/${classId}/progress`),
+      // Fetch class info + members + their progress in parallel
+      const [clsRes, membersRes] = await Promise.all([
+        supabase.from('classes').select('*').eq('id', classId).single(),
+        supabase.from('class_members')
+          .select('student_id, joined_at, student_profiles(name, grade)')
+          .eq('class_id', classId),
       ]);
 
-      if (!clsRes.ok) throw new Error('Class not found');
-      const clsData = await clsRes.json();
-      setCls(clsData);
+      if (clsRes.error) throw clsRes.error;
+      setCls(clsRes.data);
 
-      if (progressRes.ok) {
-        const progData = await progressRes.json();
-        setProgress(Array.isArray(progData) ? progData : []);
+      const members = membersRes.data ?? [];
+      const studentIds = members.map((m) => m.student_id);
+
+      // Fetch progress for all students in this class
+      let progressMap = {};
+      if (studentIds.length > 0) {
+        const { data: progRows } = await supabase
+          .from('user_progress')
+          .select('user_id, xp, total_questions, streak, last_subject, by_subject, updated_at')
+          .in('user_id', studentIds);
+        (progRows ?? []).forEach((p) => { progressMap[p.user_id] = p; });
       }
-    } catch (err) {
-      console.warn('Class data not available:', err.message);
-      // Use mock data for demo purposes
-      setCls({
-        id: classId,
-        name: 'Demo Class',
-        subject: 'Math',
-        grade: '7',
-        class_code: 'ABC123',
-        members: [],
+
+      // Merge members + progress
+      const merged = members.map((m) => {
+        const prog = progressMap[m.student_id] ?? {};
+        return {
+          student_id: m.student_id,
+          name: m.student_profiles?.name ?? 'Unknown',
+          grade: m.student_profiles?.grade ?? null,
+          joined_at: m.joined_at,
+          xp: prog.xp ?? 0,
+          totalQuestions: prog.total_questions ?? 0,
+          streak: prog.streak ?? 0,
+          bySubject: prog.by_subject ?? {},
+          lastActive: prog.updated_at ?? m.joined_at,
+          topSubject: prog.last_subject ?? null,
+        };
       });
-      setProgress([]);
-      toast.error('Could not load class data — showing demo view');
+      setProgress(merged);
+    } catch (err) {
+      console.warn('Class data error:', err.message);
+      toast.error('Could not load class data');
     } finally {
       setLoading(false);
     }
@@ -171,7 +189,7 @@ export default function ClassDetail() {
   const totalQs = Object.values(subjectTotals).reduce((a, b) => a + b, 0);
 
   /* ── Summary stats ── */
-  const totalStudents = cls?.members?.length ?? progress.length;
+  const totalStudents = progress.length;
   const totalQuestions = progress.reduce((s, st) => s + (st.totalQuestions ?? 0), 0);
   const mostActive = progress.reduce((best, s) => (!best || (s.totalQuestions ?? 0) > (best.totalQuestions ?? 0)) ? s : best, null);
   const avgXP = progress.length > 0 ? Math.round(progress.reduce((s, st) => s + (st.xp ?? 0), 0) / progress.length) : 0;

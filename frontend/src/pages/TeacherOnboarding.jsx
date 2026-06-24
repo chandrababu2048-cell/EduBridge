@@ -1,31 +1,28 @@
 /**
- * TeacherOnboarding — 3-step wizard for first-time teacher setup.
+ * TeacherOnboarding — 4-step wizard for first-time teacher setup.
+ * Step 0: Create account (email + password) or sign in
  * Step 1: Name + School
  * Step 2: Grades taught (checkboxes 1–12)
- * Step 3: Create first class (name, subject, grade)
- * On complete → POST /api/teacher/profile + POST /api/teacher/class → /teacher/dashboard
+ * Step 3: Create first class
+ * Data saved directly to Supabase (teacher_profiles + classes tables).
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-
-const API = import.meta.env.VITE_API_URL ?? '';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { supabase } from '../lib/supabase.js';
 
 const SUBJECTS = ['Math', 'Science', 'English', 'Civic Sense', 'My Rights', 'Respect & Safety', 'Communication'];
 const ALL_GRADES = Array.from({ length: 12 }, (_, i) => i + 1);
 
-function getOrCreateTeacherId() {
-  let id = localStorage.getItem('edubridge_teacher_id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('edubridge_teacher_id', id);
-  }
-  return id;
+function generateClassCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-/* ── Progress bar ──────────────────────────────────────────────────── */
+/* ── Progress bar (steps 1-3 only) ────────────────────────────────── */
 function StepBar({ step }) {
   return (
     <div className="flex items-center gap-2 mb-8">
@@ -52,7 +49,6 @@ function StepBar({ step }) {
   );
 }
 
-/* ── Field wrapper ─────────────────────────────────────────────────── */
 function Field({ label, children }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -72,8 +68,15 @@ const inputStyle = {
 /* ── Main component ────────────────────────────────────────────────── */
 export default function TeacherOnboarding() {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
+  const { user, signUp, signIn } = useAuth();
+  const [step, setStep] = useState(0); // 0=auth, 1=name/school, 2=grades, 3=class
   const [loading, setLoading] = useState(false);
+  const [authMode, setAuthMode] = useState('signup');
+
+  // Step 0 — auth
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
 
   // Step 1
   const [name, setName] = useState('');
@@ -87,11 +90,53 @@ export default function TeacherOnboarding() {
   const [classSubject, setClassSubject] = useState('Math');
   const [classGrade, setClassGrade] = useState('6');
 
+  // If already logged in, check for existing profile
+  useEffect(() => {
+    if (user && step === 0) checkExistingProfile();
+  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function checkExistingProfile() {
+    if (!user || !supabase) { setStep(1); return; }
+    const { data } = await supabase
+      .from('teacher_profiles')
+      .select('name')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (data?.name) navigate('/teacher/dashboard');
+    else setStep(1);
+  }
+
+  async function handleAuth() {
+    setAuthError('');
+    if (!email.trim() || password.length < 6) {
+      setAuthError('Enter a valid email and a password (min 6 characters).');
+      return;
+    }
+    setLoading(true);
+    try {
+      if (authMode === 'signup') {
+        const { error } = await signUp(email.trim(), password);
+        if (error) throw error;
+        toast.success('Account created!');
+        setStep(1);
+      } else {
+        const { error } = await signIn(email.trim(), password);
+        if (error) throw error;
+        await checkExistingProfile();
+      }
+    } catch (err) {
+      setAuthError(err.message ?? 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function toggleGrade(g) {
     setGrades((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]);
   }
 
   function canNext() {
+    if (step === 0) return email.trim().length > 3 && password.length >= 6;
     if (step === 1) return name.trim().length > 0 && school.trim().length > 0;
     if (step === 2) return grades.length > 0;
     if (step === 3) return className.trim().length > 0;
@@ -99,34 +144,31 @@ export default function TeacherOnboarding() {
   }
 
   async function handleFinish() {
-    if (!canNext()) return;
+    if (!user || !supabase) { toast.error('Not signed in'); return; }
     setLoading(true);
-    const teacherId = getOrCreateTeacherId();
-
     try {
-      // Save profile
-      const profileRes = await fetch(`${API}/api/teacher/profile`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher_id: teacherId, name, school_name: school, grades, subjects: [classSubject] }),
+      const { error: profileError } = await supabase.from('teacher_profiles').upsert({
+        user_id: user.id,
+        name: name.trim(),
+        school_name: school.trim(),
+        grades: grades.map(String),
+        subjects: [classSubject],
       });
-      if (!profileRes.ok) throw new Error('Failed to save profile');
+      if (profileError) throw profileError;
 
-      const profile = { name, school_name: school, grades };
-      localStorage.setItem('edubridge_teacher_profile', JSON.stringify(profile));
-
-      // Create first class
-      const classRes = await fetch(`${API}/api/teacher/class`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher_id: teacherId, name: className, subject: classSubject, grade: classGrade }),
+      const classCode = generateClassCode();
+      const { error: classError } = await supabase.from('classes').insert({
+        teacher_id: user.id,
+        name: className.trim(),
+        subject: classSubject,
+        grade: classGrade,
+        class_code: classCode,
       });
-      if (!classRes.ok) throw new Error('Failed to create class');
+      if (classError) throw classError;
 
       toast.success('Welcome to EduBridge! 🎉');
       navigate('/teacher/dashboard');
     } catch (err) {
-      console.error(err);
       toast.error(err.message ?? 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
@@ -135,6 +177,7 @@ export default function TeacherOnboarding() {
 
   function handleNext() {
     if (!canNext()) return;
+    if (step === 0) { handleAuth(); return; }
     if (step < 3) setStep((s) => s + 1);
     else handleFinish();
   }
@@ -159,7 +202,7 @@ export default function TeacherOnboarding() {
             Edu<span style={{ color: 'var(--color-primary)' }}>Bridge</span>
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>
-            Teacher Setup — Step {step} of 3: {stepLabels[step - 1]}
+            {step === 0 ? 'Teacher Sign Up' : `Teacher Setup — Step ${step} of 3: ${stepLabels[step - 1]}`}
           </p>
         </div>
 
@@ -168,9 +211,94 @@ export default function TeacherOnboarding() {
           className="rounded-2xl p-8"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}
         >
-          <StepBar step={step} />
+          {step > 0 && <StepBar step={step} />}
 
           <AnimatePresence mode="wait">
+
+            {/* ── STEP 0 — Auth ── */}
+            {step === 0 && (
+              <motion.div
+                key="step0"
+                className="flex flex-col gap-5"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22 }}
+              >
+                <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
+                  {authMode === 'signup' ? 'Create your teacher account' : 'Sign in to your account'}
+                </h2>
+
+                {/* Toggle sign up / sign in */}
+                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+                  {['signup', 'signin'].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => { setAuthMode(m); setAuthError(''); }}
+                      className="flex-1 py-2.5 text-sm font-medium transition-colors"
+                      style={{
+                        background: authMode === m ? 'var(--color-primary)' : 'transparent',
+                        color: authMode === m ? 'var(--color-primary-text)' : 'var(--color-muted)',
+                      }}
+                    >
+                      {m === 'signup' ? 'New Teacher' : 'Sign In'}
+                    </button>
+                  ))}
+                </div>
+
+                <Field label="Email address">
+                  <input
+                    type="email"
+                    placeholder="you@school.edu"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setAuthError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleNext()}
+                    className={inputClass}
+                    style={inputStyle}
+                    autoFocus
+                  />
+                </Field>
+                <Field label="Password">
+                  <input
+                    type="password"
+                    placeholder="Min 6 characters"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setAuthError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleNext()}
+                    className={inputClass}
+                    style={inputStyle}
+                  />
+                </Field>
+
+                {authError && (
+                  <p className="text-sm rounded-xl px-4 py-3" style={{ background: '#FFF3CD', color: '#856404' }}>
+                    ⚠️ {authError}
+                  </p>
+                )}
+
+                <motion.button
+                  onClick={handleNext}
+                  disabled={!canNext() || loading}
+                  className="w-full py-3 rounded-xl font-semibold text-sm"
+                  style={{
+                    background: canNext() ? 'var(--color-primary)' : 'var(--color-surface2)',
+                    color: canNext() ? 'var(--color-primary-text)' : 'var(--color-muted)',
+                  }}
+                  whileTap={canNext() ? { scale: 0.97 } : {}}
+                >
+                  {loading ? 'Please wait…' : authMode === 'signup' ? 'Create Account →' : 'Sign In →'}
+                </motion.button>
+
+                <button
+                  onClick={() => navigate('/')}
+                  className="text-xs text-center"
+                  style={{ color: 'var(--color-muted)' }}
+                >
+                  ← Back to home
+                </button>
+              </motion.div>
+            )}
+
             {/* ── STEP 1 ── */}
             {step === 1 && (
               <motion.div
@@ -221,9 +349,7 @@ export default function TeacherOnboarding() {
                 <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
                   Which grades do you teach? 🏫
                 </h2>
-                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                  Select all that apply
-                </p>
+                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Select all that apply</p>
                 <div className="grid grid-cols-4 gap-2">
                   {ALL_GRADES.map((g) => {
                     const active = grades.includes(g);
@@ -302,35 +428,34 @@ export default function TeacherOnboarding() {
             )}
           </AnimatePresence>
 
-          {/* Nav buttons */}
-          <div className="flex items-center justify-between mt-8 gap-3">
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              disabled={step === 1}
-              className="px-5 py-2.5 rounded-xl text-sm font-medium transition-opacity"
-              style={{
-                background: 'var(--color-surface2)',
-                color: step === 1 ? 'var(--color-surface2)' : 'var(--color-text)',
-                opacity: step === 1 ? 0 : 1,
-                pointerEvents: step === 1 ? 'none' : 'auto',
-              }}
-            >
-              ← Back
-            </button>
-            <motion.button
-              onClick={handleNext}
-              disabled={!canNext() || loading}
-              className="flex-1 py-3 rounded-xl font-semibold text-sm transition-opacity"
-              style={{
-                background: canNext() ? 'var(--color-primary)' : 'var(--color-surface2)',
-                color: canNext() ? 'var(--color-primary-text)' : 'var(--color-muted)',
-                cursor: canNext() && !loading ? 'pointer' : 'not-allowed',
-              }}
-              whileTap={canNext() ? { scale: 0.97 } : {}}
-            >
-              {loading ? 'Saving…' : step === 3 ? 'Finish Setup →' : 'Next →'}
-            </motion.button>
-          </div>
+          {/* Nav buttons (steps 1-3) */}
+          {step > 0 && (
+            <div className="flex items-center justify-between mt-8 gap-3">
+              <button
+                onClick={() => setStep((s) => s - 1)}
+                className="px-5 py-2.5 rounded-xl text-sm font-medium transition-opacity"
+                style={{
+                  background: 'var(--color-surface2)',
+                  color: 'var(--color-text)',
+                }}
+              >
+                ← Back
+              </button>
+              <motion.button
+                onClick={handleNext}
+                disabled={!canNext() || loading}
+                className="flex-1 py-3 rounded-xl font-semibold text-sm transition-opacity"
+                style={{
+                  background: canNext() ? 'var(--color-primary)' : 'var(--color-surface2)',
+                  color: canNext() ? 'var(--color-primary-text)' : 'var(--color-muted)',
+                  cursor: canNext() && !loading ? 'pointer' : 'not-allowed',
+                }}
+                whileTap={canNext() ? { scale: 0.97 } : {}}
+              >
+                {loading ? 'Saving…' : step === 3 ? 'Finish Setup →' : 'Next →'}
+              </motion.button>
+            </div>
+          )}
         </div>
       </motion.div>
     </div>

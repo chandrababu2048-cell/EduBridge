@@ -3,34 +3,18 @@
  * Route: /join
  *
  * Flow:
- *  1. If student name not set → ask for name
- *  2. Enter 6-char class code (auto-uppercase)
- *  3. POST /api/student/join → success screen → /app
+ *  1. Name step → ask for student's display name
+ *  2. Auth step → email + password signup/signin (creates Supabase account)
+ *  3. Code step → enter 6-char class code, look up class and join via class_members
+ *  4. Success → navigate to /app
  */
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-
-const API = import.meta.env.VITE_API_URL ?? '';
-
-function getOrCreateStudentId() {
-  let id = localStorage.getItem('edubridge_student_id');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('edubridge_student_id', id);
-  }
-  return id;
-}
-
-function getStudentName() {
-  return localStorage.getItem('edubridge_student_name') ?? '';
-}
-
-function saveStudentName(name) {
-  localStorage.setItem('edubridge_student_name', name);
-}
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { supabase } from '../lib/supabase.js';
 
 const inputStyle = {
   background: 'var(--color-surface)',
@@ -38,55 +22,117 @@ const inputStyle = {
   color: 'var(--color-text)',
 };
 
+function getStudentName() {
+  return localStorage.getItem('edubridge_student_name') ?? '';
+}
+
 export default function StudentJoin() {
   const navigate = useNavigate();
+  const { user, signUp, signIn } = useAuth();
 
-  const [step, setStep] = useState(() => getStudentName() ? 'code' : 'name');
-  const [studentName, setStudentName] = useState(getStudentName);
-  const [nameInput, setNameInput] = useState('');
+  const savedName = getStudentName();
+  const [step, setStep] = useState(() => {
+    if (user) return 'code';      // already logged in
+    if (savedName) return 'auth'; // has name, needs auth
+    return 'name';
+  });
+
+  const [nameInput, setNameInput] = useState(savedName);
+  const [studentName, setStudentName] = useState(savedName);
+
+  // Auth
+  const [authMode, setAuthMode] = useState('signup');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+
+  // Code
   const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [success, setSuccess] = useState(null); // { class_name, teacher_name }
 
   function handleNameSubmit() {
     const trimmed = nameInput.trim();
     if (!trimmed) return;
-    saveStudentName(trimmed);
+    localStorage.setItem('edubridge_student_name', trimmed);
     setStudentName(trimmed);
-    setStep('code');
+    setStep(user ? 'code' : 'auth');
+  }
+
+  async function handleAuth() {
+    setAuthError('');
+    if (!email.trim() || password.length < 6) {
+      setAuthError('Enter a valid email and a password (min 6 characters).');
+      return;
+    }
+    setLoading(true);
+    try {
+      if (authMode === 'signup') {
+        const { error } = await signUp(email.trim(), password);
+        if (error) throw error;
+        // Save student profile in Supabase
+        toast.success('Account created!');
+        setStep('code');
+      } else {
+        const { error } = await signIn(email.trim(), password);
+        if (error) throw error;
+        setStep('code');
+      }
+    } catch (err) {
+      setAuthError(err.message ?? 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleJoin() {
     const trimmedCode = code.trim().toUpperCase();
     if (trimmedCode.length !== 6) {
-      setError('Please enter a 6-character class code.');
+      setCodeError('Please enter the full 6-character code.');
       return;
     }
-    setError('');
+    if (!user || !supabase) {
+      setCodeError('Please sign in first.');
+      return;
+    }
+    setCodeError('');
     setLoading(true);
-
-    const studentId = getOrCreateStudentId();
-
     try {
-      const res = await fetch(`${API}/api/student/join`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: studentId, class_code: trimmedCode, name: studentName }),
-      });
+      // Look up the class by code
+      const { data: cls, error: clsError } = await supabase
+        .from('classes')
+        .select('id, name, teacher_id, teacher_profiles(name)')
+        .eq('class_code', trimmedCode)
+        .eq('active', true)
+        .maybeSingle();
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || data.success === false) {
-        setError('Invalid code — ask your teacher for the right code.');
+      if (clsError) throw clsError;
+      if (!cls) {
+        setCodeError('Invalid code — ask your teacher for the right code.');
         return;
       }
 
+      // Save/update student profile
+      await supabase.from('student_profiles').upsert({
+        user_id: user.id,
+        name: studentName,
+      });
+
+      // Join the class (upsert to handle re-joins gracefully)
+      const { error: joinError } = await supabase.from('class_members').upsert({
+        class_id: cls.id,
+        student_id: user.id,
+      }, { onConflict: 'class_id,student_id' });
+
+      if (joinError) throw joinError;
+
+      const teacherName = cls.teacher_profiles?.name ?? 'Your Teacher';
       toast.success('You joined the class! 🎉');
-      setSuccess({ class_name: data.class_name ?? 'Your Class', teacher_name: data.teacher_name ?? 'Your Teacher' });
+      setSuccess({ class_name: cls.name, teacher_name: teacherName });
       setStep('success');
-    } catch {
-      setError('Could not connect. Check your internet and try again.');
+    } catch (err) {
+      setCodeError(err.message ?? 'Could not connect. Check your internet and try again.');
     } finally {
       setLoading(false);
     }
@@ -134,7 +180,7 @@ export default function StudentJoin() {
                     What's your name? 👋
                   </h2>
                   <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                    Your teacher will see this in the class.
+                    Your teacher will see this in the class roster.
                   </p>
                 </div>
                 <input
@@ -163,6 +209,96 @@ export default function StudentJoin() {
               </motion.div>
             )}
 
+            {/* ── Step: auth ── */}
+            {step === 'auth' && (
+              <motion.div
+                key="auth"
+                className="flex flex-col gap-5"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ duration: 0.22 }}
+              >
+                <div>
+                  <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>
+                    Hi {studentName}! 👋
+                  </h2>
+                  <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                    Create a free account to save your progress.
+                  </p>
+                </div>
+
+                <div className="flex rounded-xl overflow-hidden" style={{ border: '1px solid var(--color-border)' }}>
+                  {['signup', 'signin'].map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => { setAuthMode(m); setAuthError(''); }}
+                      className="flex-1 py-2.5 text-sm font-medium transition-colors"
+                      style={{
+                        background: authMode === m ? 'var(--color-primary)' : 'transparent',
+                        color: authMode === m ? 'var(--color-primary-text)' : 'var(--color-muted)',
+                      }}
+                    >
+                      {m === 'signup' ? 'New Student' : 'Sign In'}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Email</label>
+                  <input
+                    autoFocus
+                    type="email"
+                    placeholder="you@example.com"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setAuthError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Password</label>
+                  <input
+                    type="password"
+                    placeholder="Min 6 characters"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setAuthError(''); }}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                    style={inputStyle}
+                  />
+                </div>
+
+                {authError && (
+                  <p className="text-sm rounded-xl px-4 py-3" style={{ background: '#FFF3CD', color: '#856404' }}>
+                    ⚠️ {authError}
+                  </p>
+                )}
+
+                <motion.button
+                  onClick={handleAuth}
+                  disabled={!email.trim() || password.length < 6 || loading}
+                  className="w-full py-3.5 rounded-xl font-semibold text-base"
+                  style={{
+                    background: email.trim() && password.length >= 6 ? 'var(--color-primary)' : 'var(--color-surface2)',
+                    color: email.trim() && password.length >= 6 ? 'var(--color-primary-text)' : 'var(--color-muted)',
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {loading ? 'Please wait…' : authMode === 'signup' ? 'Create Account →' : 'Sign In →'}
+                </motion.button>
+
+                <button
+                  onClick={() => setStep('name')}
+                  className="text-xs text-center"
+                  style={{ color: 'var(--color-muted)' }}
+                >
+                  ← Change name
+                </button>
+              </motion.div>
+            )}
+
             {/* ── Step: code ── */}
             {step === 'code' && (
               <motion.div
@@ -178,11 +314,10 @@ export default function StudentJoin() {
                     Join your class
                   </h2>
                   <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                    Hi <strong style={{ color: 'var(--color-text)' }}>{studentName}</strong>! Enter the 6-letter code your teacher gave you.
+                    Enter the 6-letter code your teacher gave you.
                   </p>
                 </div>
 
-                {/* Large code input */}
                 <div className="flex flex-col gap-2">
                   <input
                     autoFocus
@@ -192,27 +327,21 @@ export default function StudentJoin() {
                     maxLength={6}
                     onChange={(e) => {
                       setCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''));
-                      setError('');
+                      setCodeError('');
                     }}
                     onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
                     className="w-full px-6 py-4 rounded-xl text-center font-black text-3xl tracking-[0.3em] outline-none uppercase"
-                    style={{
-                      ...inputStyle,
-                      letterSpacing: '0.3em',
-                      caretColor: 'var(--color-primary)',
-                    }}
+                    style={{ ...inputStyle, caretColor: 'var(--color-primary)' }}
                     spellCheck={false}
                     autoComplete="off"
                   />
-                  {/* Char counter */}
                   <div className="text-center text-xs" style={{ color: 'var(--color-muted)' }}>
                     {code.length}/6 characters
                   </div>
                 </div>
 
-                {/* Error */}
                 <AnimatePresence>
-                  {error && (
+                  {codeError && (
                     <motion.div
                       className="rounded-xl px-4 py-3 text-sm font-medium"
                       style={{ background: '#FFF3CD', color: '#856404', border: '1px solid #FFEAA7' }}
@@ -220,7 +349,7 @@ export default function StudentJoin() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
                     >
-                      ⚠️ {error}
+                      ⚠️ {codeError}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -238,14 +367,6 @@ export default function StudentJoin() {
                 >
                   {loading ? 'Joining…' : 'Join Class →'}
                 </motion.button>
-
-                <button
-                  onClick={() => setStep('name')}
-                  className="text-xs text-center"
-                  style={{ color: 'var(--color-muted)' }}
-                >
-                  Not {studentName}? Change name
-                </button>
               </motion.div>
             )}
 
@@ -269,14 +390,12 @@ export default function StudentJoin() {
                     You're all set to start learning.
                   </p>
                 </div>
-
                 <div
                   className="w-full rounded-2xl px-4 py-4 text-sm"
                   style={{ background: 'var(--color-surface2)', color: 'var(--color-muted)' }}
                 >
                   Signed in as <strong style={{ color: 'var(--color-text)' }}>{studentName}</strong>
                 </div>
-
                 <motion.button
                   onClick={() => navigate('/app')}
                   className="w-full py-4 rounded-xl font-bold text-base"
@@ -292,7 +411,6 @@ export default function StudentJoin() {
           </AnimatePresence>
         </div>
 
-        {/* Back to home */}
         <div className="text-center mt-6">
           <button
             onClick={() => navigate('/')}

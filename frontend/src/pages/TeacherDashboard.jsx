@@ -1,18 +1,16 @@
 /**
  * TeacherDashboard — main teacher view with sidebar + class card grid.
  * Route: /teacher/dashboard
- *
- * Layout (desktop):
- *   [Sidebar 240px] [Main content flex-1]
- * Mobile: sidebar collapses to a top nav bar
+ * Auth: reads teacher from Supabase auth (useAuth hook).
+ * Data: reads/writes classes directly to Supabase (classes table).
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-
-const API = import.meta.env.VITE_API_URL ?? '';
+import { useAuth } from '../contexts/AuthContext.jsx';
+import { supabase } from '../lib/supabase.js';
 
 const SUBJECTS = ['Math', 'Science', 'English', 'Civic Sense', 'My Rights', 'Respect & Safety', 'Communication'];
 const ALL_GRADES = Array.from({ length: 12 }, (_, i) => i + 1);
@@ -22,6 +20,11 @@ const SUBJECT_EMOJI = {
   'Civic Sense': '🏛️', 'My Rights': '⚖️',
   'Respect & Safety': '🛡️', Communication: '💬',
 };
+
+function generateClassCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
 function timeAgo(dateStr) {
   if (!dateStr) return 'Never';
@@ -53,6 +56,7 @@ function SkeletonCard() {
 function ClassCard({ cls }) {
   const navigate = useNavigate();
   const emoji = SUBJECT_EMOJI[cls.subject] ?? '📚';
+  const memberCount = cls.class_members?.[0]?.count ?? 0;
 
   return (
     <motion.div
@@ -62,7 +66,6 @@ function ClassCard({ cls }) {
       whileTap={{ scale: 0.98 }}
       onClick={() => navigate(`/teacher/class/${cls.id}`)}
     >
-      {/* Header row */}
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -82,33 +85,25 @@ function ClassCard({ cls }) {
           className="text-xs font-mono font-bold px-2 py-1 rounded-lg tracking-widest flex-shrink-0"
           style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
         >
-          {cls.class_code ?? cls.code ?? '------'}
+          {cls.class_code}
         </span>
       </div>
 
-      {/* Stats row */}
       <div className="flex items-center gap-4 text-sm" style={{ color: 'var(--color-muted)' }}>
-        <span>👥 {cls.student_count ?? cls.members?.length ?? 0} students</span>
+        <span>👥 {memberCount} student{memberCount !== 1 ? 's' : ''}</span>
         <span>📖 {cls.subject}</span>
       </div>
 
-      {/* Footer */}
       <div className="flex items-center justify-between pt-1" style={{ borderTop: '1px solid var(--color-border)' }}>
-        {cls.top_subject && (
-          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-            Most studied: {SUBJECT_EMOJI[cls.top_subject] ?? ''} {cls.top_subject}
-          </span>
-        )}
-        <span className="text-xs ml-auto" style={{ color: 'var(--color-muted)' }}>
-          {cls.last_active ? timeAgo(cls.last_active) : ''}
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          Created {timeAgo(cls.created_at)}
         </span>
-      </div>
-
-      <div
-        className="text-xs font-medium text-right opacity-0 group-hover:opacity-100 transition-opacity"
-        style={{ color: 'var(--color-primary)' }}
-      >
-        View class →
+        <span
+          className="text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ color: 'var(--color-primary)' }}
+        >
+          View class →
+        </span>
       </div>
     </motion.div>
   );
@@ -124,17 +119,19 @@ function CreateClassModal({ onClose, onCreated, teacherId }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCreate() {
-    if (!className.trim()) return;
+    if (!className.trim() || !supabase) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/teacher/class`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teacher_id: teacherId, name: className, subject, grade }),
-      });
-      if (!res.ok) throw new Error('Failed to create class');
-      const data = await res.json();
-      setSuccessCode(data.class_code ?? data.code ?? 'ABC123');
+      const classCode = generateClassCode();
+      const { data, error } = await supabase.from('classes').insert({
+        teacher_id: teacherId,
+        name: className.trim(),
+        subject,
+        grade,
+        class_code: classCode,
+      }).select().single();
+      if (error) throw error;
+      setSuccessCode(data.class_code);
       onCreated();
     } catch (err) {
       toast.error(err.message ?? 'Failed to create class');
@@ -164,13 +161,11 @@ function CreateClassModal({ onClose, onCreated, teacherId }) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      {/* Backdrop */}
       <div
         className="absolute inset-0"
         style={{ background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}
         onClick={onClose}
       />
-
       <motion.div
         className="relative w-full max-w-md rounded-2xl p-8 z-10"
         style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', boxShadow: '0 24px 60px rgba(0,0,0,0.18)' }}
@@ -248,9 +243,7 @@ function CreateClassModal({ onClose, onCreated, teacherId }) {
             <div className="text-5xl">🎉</div>
             <div>
               <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--color-text)' }}>Class Created!</h2>
-              <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                Share this code with your students:
-              </p>
+              <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Share this code with your students:</p>
             </div>
             <div
               className="px-8 py-4 rounded-2xl"
@@ -268,13 +261,7 @@ function CreateClassModal({ onClose, onCreated, teacherId }) {
             >
               {copied ? '✓ Copied!' : '📋 Copy Code'}
             </motion.button>
-            <button
-              onClick={onClose}
-              className="text-sm"
-              style={{ color: 'var(--color-muted)' }}
-            >
-              Close
-            </button>
+            <button onClick={onClose} className="text-sm" style={{ color: 'var(--color-muted)' }}>Close</button>
           </motion.div>
         )}
       </motion.div>
@@ -292,7 +279,6 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
 
   return (
     <>
-      {/* Mobile backdrop */}
       {mobileOpen && (
         <div
           className="fixed inset-0 z-30 md:hidden"
@@ -300,7 +286,6 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
           onClick={onCloseMobile}
         />
       )}
-
       <aside
         className={`
           fixed inset-y-0 left-0 z-40 flex flex-col
@@ -308,17 +293,9 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
           md:relative md:translate-x-0 md:z-auto
           ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
-        style={{
-          width: 240,
-          background: 'var(--color-surface)',
-          borderRight: '1px solid var(--color-border)',
-        }}
+        style={{ width: 240, background: 'var(--color-surface)', borderRight: '1px solid var(--color-border)' }}
       >
-        {/* Logo */}
-        <div
-          className="flex items-center gap-2.5 px-5 py-5"
-          style={{ borderBottom: '1px solid var(--color-border)' }}
-        >
+        <div className="flex items-center gap-2.5 px-5 py-5" style={{ borderBottom: '1px solid var(--color-border)' }}>
           <span className="text-2xl">🌉</span>
           <div>
             <p className="text-base font-bold leading-tight" style={{ color: 'var(--color-text)' }}>
@@ -335,7 +312,6 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
           </button>
         </div>
 
-        {/* Teacher name */}
         {teacherName && (
           <div className="px-5 py-3" style={{ borderBottom: '1px solid var(--color-border)' }}>
             <p className="text-xs font-medium" style={{ color: 'var(--color-muted)' }}>Signed in as</p>
@@ -343,7 +319,6 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
           </div>
         )}
 
-        {/* Nav links */}
         <nav className="flex-1 flex flex-col gap-1 px-3 py-4">
           {links.map(({ id, label, emoji }) => {
             const active = activeTab === id;
@@ -364,7 +339,6 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
           })}
         </nav>
 
-        {/* Sign out */}
         <div className="px-3 py-4" style={{ borderTop: '1px solid var(--color-border)' }}>
           <button
             onClick={onSignOut}
@@ -383,63 +357,65 @@ function Sidebar({ activeTab, setActiveTab, teacherName, onSignOut, mobileOpen, 
 /* ── Main Dashboard ────────────────────────────────────────────────── */
 export default function TeacherDashboard() {
   const navigate = useNavigate();
+  const { user, loading: authLoading, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('classes');
   const [classes, setClasses] = useState([]);
+  const [teacherProfile, setTeacherProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const teacherId = localStorage.getItem('edubridge_teacher_id');
-  const profile = (() => {
-    try { return JSON.parse(localStorage.getItem('edubridge_teacher_profile') ?? '{}'); }
-    catch { return {}; }
-  })();
-
-  const fetchClasses = useCallback(async () => {
-    if (!teacherId) { navigate('/teacher/onboarding'); return; }
+  const fetchData = useCallback(async () => {
+    if (!user || !supabase) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API}/api/teacher/classes?teacher_id=${teacherId}`);
-      if (!res.ok) throw new Error('Failed to load classes');
-      const data = await res.json();
-      setClasses(Array.isArray(data) ? data : data.classes ?? []);
+      const [profileRes, classesRes] = await Promise.all([
+        supabase.from('teacher_profiles').select('name, school_name').eq('user_id', user.id).maybeSingle(),
+        supabase.from('classes')
+          .select('*, class_members(count)')
+          .eq('teacher_id', user.id)
+          .eq('active', true)
+          .order('created_at', { ascending: false }),
+      ]);
+      setTeacherProfile(profileRes.data);
+      setClasses(classesRes.data ?? []);
     } catch (err) {
-      // Show empty state if API not yet available
-      console.warn('Classes API not available:', err.message);
-      setClasses([]);
+      console.warn('Dashboard load error:', err.message);
     } finally {
       setLoading(false);
     }
-  }, [teacherId, navigate]);
+  }, [user]);
 
-  useEffect(() => { fetchClasses(); }, [fetchClasses]);
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) { navigate('/teacher/onboarding'); return; }
+    fetchData();
+  }, [user, authLoading, fetchData, navigate]);
 
-  function handleSignOut() {
-    localStorage.removeItem('edubridge_teacher_id');
-    localStorage.removeItem('edubridge_teacher_profile');
+  async function handleSignOut() {
+    await signOut();
     navigate('/');
   }
+
+  if (authLoading) return null;
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--color-bg)' }}>
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        teacherName={profile.name}
+        teacherName={teacherProfile?.name}
         onSignOut={handleSignOut}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top bar */}
         <header
           className="flex items-center justify-between px-6 py-4 gap-4"
           style={{ borderBottom: '1px solid var(--color-border)', background: 'var(--color-surface)' }}
         >
           <div className="flex items-center gap-3">
-            {/* Hamburger — mobile only */}
             <button
               className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg"
               style={{ color: 'var(--color-text)', background: 'var(--color-surface2)' }}
@@ -464,7 +440,6 @@ export default function TeacherDashboard() {
           </motion.button>
         </header>
 
-        {/* Page body */}
         <main className="flex-1 px-6 py-6">
           <AnimatePresence mode="wait">
             {activeTab === 'classes' && (
@@ -479,16 +454,13 @@ export default function TeacherDashboard() {
                     {[1, 2, 3, 4].map((n) => <SkeletonCard key={n} />)}
                   </div>
                 ) : classes.length === 0 ? (
-                  /* Empty state */
                   <motion.div
                     className="flex flex-col items-center justify-center py-24 text-center"
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                   >
                     <div className="text-6xl mb-4">🏫</div>
-                    <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>
-                      No classes yet
-                    </h2>
+                    <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>No classes yet</h2>
                     <p className="text-sm mb-6 max-w-xs" style={{ color: 'var(--color-muted)' }}>
                       Create your first class to get started. Students can join using a class code.
                     </p>
@@ -527,11 +499,10 @@ export default function TeacherDashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
               >
-                {/* Quick stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
                     { label: 'Total Classes', value: classes.length, emoji: '🎓' },
-                    { label: 'Total Students', value: classes.reduce((s, c) => s + (c.student_count ?? c.members?.length ?? 0), 0), emoji: '👥' },
+                    { label: 'Total Students', value: classes.reduce((s, c) => s + (c.class_members?.[0]?.count ?? 0), 0), emoji: '👥' },
                     { label: 'Subjects', value: [...new Set(classes.map((c) => c.subject))].length, emoji: '📚' },
                     { label: 'Grades', value: [...new Set(classes.map((c) => c.grade))].length, emoji: '🏫' },
                   ].map(({ label, value, emoji }) => (
@@ -547,7 +518,7 @@ export default function TeacherDashboard() {
                   ))}
                 </div>
                 <p className="text-sm text-center" style={{ color: 'var(--color-muted)' }}>
-                  More insights coming soon. Switch to "My Classes" to view individual class details.
+                  Switch to "My Classes" to view individual class details.
                 </p>
               </motion.div>
             )}
@@ -562,22 +533,19 @@ export default function TeacherDashboard() {
               >
                 <div className="text-5xl mb-4">📊</div>
                 <h2 className="text-xl font-bold mb-2" style={{ color: 'var(--color-text)' }}>Reports coming soon</h2>
-                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                  Detailed progress reports will appear here.
-                </p>
+                <p className="text-sm" style={{ color: 'var(--color-muted)' }}>Detailed progress reports will appear here.</p>
               </motion.div>
             )}
           </AnimatePresence>
         </main>
       </div>
 
-      {/* Create class modal */}
       <AnimatePresence>
         {showCreate && (
           <CreateClassModal
-            teacherId={teacherId}
+            teacherId={user?.id}
             onClose={() => setShowCreate(false)}
-            onCreated={() => { fetchClasses(); }}
+            onCreated={() => { fetchData(); setShowCreate(false); }}
           />
         )}
       </AnimatePresence>
