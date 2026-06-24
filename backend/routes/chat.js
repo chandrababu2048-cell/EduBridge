@@ -14,7 +14,7 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 // POST /api/chat — main tutoring endpoint
 router.post('/chat', async (req, res) => {
   try {
-    const { message, subject, ageLevel, language } = req.body;
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = req.body;
 
     // Validate the incoming message
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -22,7 +22,7 @@ router.post('/chat', async (req, res) => {
     }
 
     // Build the child-friendly system prompt for this subject/age/language
-    const systemPrompt = getSystemPrompt(subject, ageLevel, language);
+    const systemPrompt = getSystemPrompt(subject, ageLevel, language, { grade, chapterName, chapterIndex });
 
     // Call Claude API (claude-sonnet-4-6, max 1024 tokens per AGENTS.md)
     const response = await anthropic.messages.create({

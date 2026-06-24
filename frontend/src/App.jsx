@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from './components/Header';
 import SubjectSelector from './components/SubjectSelector';
-import AgeLevelSelector from './components/AgeLevelSelector';
+import GradeSelector from './components/GradeSelector';
+import ChapterSelector from './components/ChapterSelector';
 import ChatBox from './components/ChatBox';
 import Dashboard from './components/Dashboard';
 import StarBackground from './components/StarBackground';
@@ -24,12 +25,18 @@ import { XP_REWARDS } from './data/levels';
 
 function App() {
   const [subject, setSubject] = useState('Math');
-  const [ageLevel, setAgeLevel] = useState('little');
+  const [grade, setGrade] = useState(7);
+  const [chapter, setChapter] = useState(null); // 0-based chapter index, null = no filter
   const [language, setLanguage] = useState('english');
+  const ageLevel = grade <= 5 ? 'little' : 'older';
   const [view, setView] = useState('welcome'); // 'welcome' | 'chat' | 'dashboard' | 'quiz'
   const [showAuth, setShowAuth] = useState(false);
 
   const { user, signOut } = useAuth();
+
+  // Reset chapter when subject or grade changes (chapters are specific to subject+grade)
+  const handleSubjectChange = (s) => { setSubject(s); setChapter(null); };
+  const handleGradeChange = (g) => { setGrade(g); setChapter(null); };
   const { xp, level, levelData, nextLevelXP, addXP, showLevelUp, setShowLevelUp, setXPFromCloud } = useXP();
   const { stats, recordQuestion, setStatsFromCloud } = useStats();
   const { earned, locked, justUnlocked, clearUnlocked } = useBadges(stats);
@@ -157,10 +164,11 @@ function App() {
                 {/* Two-column grid on desktop, stacked on mobile */}
                 <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
 
-                  {/* LEFT — Subject + Age + Start */}
-                  <motion.div className="flex flex-col gap-5" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
-                    <SubjectSelector subject={subject} setSubject={setSubject} />
-                    <AgeLevelSelector ageLevel={ageLevel} setAgeLevel={setAgeLevel} />
+                  {/* LEFT — Subject + Grade + Chapter + Start */}
+                  <motion.div className="flex flex-col gap-4" initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }}>
+                    <SubjectSelector subject={subject} setSubject={handleSubjectChange} />
+                    <GradeSelector grade={grade} setGrade={handleGradeChange} />
+                    <ChapterSelector subject={subject} grade={grade} chapter={chapter} setChapter={setChapter} />
                     <motion.button
                       onClick={() => setView('chat')}
                       className="w-full py-3.5 rounded-xl font-semibold text-sm"
@@ -218,6 +226,8 @@ function App() {
                 <ChatBox
                   subject={subject}
                   ageLevel={ageLevel}
+                  grade={grade}
+                  chapter={chapter}
                   language={language}
                   setLanguage={setLanguage}
                   onBack={() => setView('welcome')}

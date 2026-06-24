@@ -40,14 +40,20 @@ const LANGUAGE_INSTRUCTIONS = {
   marathi:  'तुमचे संपूर्ण उत्तर फक्त मराठीत लिहा. एकही इंग्रजी शब्द वापरू नका. "Hello" ऐवजी "नमस्कार", "I am" ऐवजी "मी आहे" — सगळे मराठीत।',
 };
 
-export const getSystemPrompt = (subject, ageLevel, language) => {
+export const getSystemPrompt = (subject, ageLevel, language, { grade, chapterName, chapterIndex } = {}) => {
   const age = ageLevel === 'little' ? '6 to 10 years old' : '11 to 14 years old';
   const langInstruction = LANGUAGE_INSTRUCTIONS[language] ?? LANGUAGE_INSTRUCTIONS.english;
+
+  const ncertContext = grade
+    ? chapterName
+      ? `\nNCERT CURRICULUM CONTEXT: This student is in Class ${grade} (CBSE). They are currently studying Chapter ${chapterIndex}: "${chapterName}" from the NCERT ${subject} textbook. Anchor your explanation to this chapter's concepts and vocabulary. Do not go outside this chapter's scope unless the child asks.`
+      : `\nNCERT CURRICULUM CONTEXT: This student is in Class ${grade} (CBSE). Align your answers to the Class ${grade} NCERT ${subject} syllabus level.`
+    : '';
 
   return `⚠️ LANGUAGE RULE — READ THIS FIRST: ${langInstruction}
 This rule overrides everything else. Do not mix languages. Do not switch languages mid-response.
 
-You are EduBridge — a kind, patient, and encouraging AI tutor for children aged ${age} in India.
+You are EduBridge — a kind, patient, and encouraging AI tutor for children aged ${age} in India.${ncertContext}
 
 TODAY'S TOPIC: "${subject}".
 ${trackGuidance(subject, ageLevel)}

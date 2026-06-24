@@ -7,6 +7,7 @@ import MessageBubble from './MessageBubble';
 import Mascot from './Mascot';
 import ConfettiEffect from './ConfettiEffect';
 import { SUBJECT_THEMES } from '../subjectThemes';
+import { getChapters } from '../data/ncert.js';
 
 const SpeechRecognition =
   typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -21,7 +22,7 @@ const LANGUAGES = [
   { code: 'marathi',  label: 'Marathi',  native: 'मराठी',    flag: '🇮🇳', speech: 'mr-IN' },
 ];
 
-const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionAsked, playSound }) => {
+const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onBack, onQuestionAsked, playSound }) => {
   const theme = SUBJECT_THEMES[subject];
 
   const [messages, setMessages] = useState([
@@ -88,7 +89,11 @@ const ChatBox = ({ subject, ageLevel, language, setLanguage, onBack, onQuestionA
       const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage, subject, ageLevel, language })
+        body: JSON.stringify({
+            message: userMessage, subject, ageLevel, grade, language,
+            chapterName: chapter !== null ? getChapters(subject, grade)[chapter] ?? null : null,
+            chapterIndex: chapter !== null ? chapter + 1 : null,
+          })
       });
       if (!response.ok) throw new Error('API error');
       const data = await response.json();

@@ -51,7 +51,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, subject, ageLevel, language } = req.body || {};
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = req.body || {};
 
     // Validate the incoming message
     if (!message || typeof message !== 'string' || !message.trim()) {
@@ -68,7 +68,7 @@ export default async function handler(req, res) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: getSystemPrompt(subject, ageLevel, language),
+      system: getSystemPrompt(subject, ageLevel, language, { grade, chapterName, chapterIndex }),
       messages: [{ role: 'user', content: message }]
     });
 
