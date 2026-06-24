@@ -17,14 +17,17 @@ describe('getSystemPrompt', () => {
     expect(prompt).toContain('11 to 14 years old');
   });
 
-  it('requests Telugu when language is telugu', () => {
+  it('enforces Telugu-only language when language is telugu', () => {
     const prompt = getSystemPrompt('Math', 'little', 'telugu');
-    expect(prompt).toContain('Telugu');
+    // Telugu instruction is written in Telugu script — check it starts with the language rule
+    expect(prompt).toContain('LANGUAGE RULE');
+    expect(prompt).toContain('తెలుగు');
   });
 
-  it('requests simple English when language is english', () => {
+  it('enforces English-only language when language is english', () => {
     const prompt = getSystemPrompt('Math', 'little', 'english');
-    expect(prompt).toContain('simple English');
+    expect(prompt).toContain('LANGUAGE RULE');
+    expect(prompt).toContain('ENGLISH ONLY');
   });
 
   it.each(['Math', 'Science', 'English', 'Civic Sense', 'My Rights', 'Communication'])(
