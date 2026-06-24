@@ -11,15 +11,16 @@ export default function GradeSelector({ grade, setGrade }) {
       <p className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>
         Your Class
       </p>
-      <div className="grid grid-cols-6 gap-1.5">
+      <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
         {GRADES.map((g) => {
           const active = grade === g;
           return (
             <motion.button
               key={g}
               onClick={() => setGrade(g)}
-              className="rounded-lg py-1.5 text-xs font-bold transition-all"
+              className="rounded-xl text-sm font-bold transition-all flex items-center justify-center"
               style={{
+                minHeight: 44,
                 background: active ? 'var(--color-primary)' : 'var(--color-surface2)',
                 color: active ? 'var(--color-primary-text)' : 'var(--color-muted)',
                 border: active ? '1.5px solid var(--color-primary)' : '1.5px solid transparent',

@@ -123,8 +123,8 @@ function App() {
             >
               <span className="text-3xl">{justUnlocked.emoji}</span>
               <div>
-                <p className="text-[#FFD700] font-black text-sm uppercase tracking-wide">Badge Unlocked!</p>
-                <p className="text-white font-bold">{justUnlocked.name}</p>
+                <p className="font-black text-sm uppercase tracking-wide" style={{ color: 'var(--color-primary)' }}>Badge Unlocked!</p>
+                <p className="font-bold" style={{ color: 'var(--color-text)' }}>{justUnlocked.name}</p>
               </div>
             </div>
           </motion.div>

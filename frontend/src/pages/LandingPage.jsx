@@ -383,7 +383,7 @@ function Hero({ stats }) {
           ].map((stat, i) => (
             <div key={i} style={{ flex: '1 1 140px', textAlign: 'center', padding: '8px 16px', position: 'relative' }}>
               {i > 0 && (
-                <div style={{
+                <div className="hidden sm:block" style={{
                   position: 'absolute', left: 0, top: '20%', height: '60%',
                   width: 1, background: 'var(--color-border)',
                 }} />

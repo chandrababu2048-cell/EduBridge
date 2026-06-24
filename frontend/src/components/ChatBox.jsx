@@ -148,7 +148,7 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
         <div className="relative">
           <button
             onClick={() => setShowLangPicker(p => !p)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-h-[36px]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px]"
             style={{ color: 'var(--color-text)', border: '1px solid var(--color-border)', background: 'var(--color-surface2)' }}
           >
             {currentLang.flag} {currentLang.native}
@@ -194,7 +194,7 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
                 <motion.button
                   key={q}
                   onClick={() => sendMessage(q)}
-                  className="rounded-lg px-3 py-2 text-sm font-medium min-h-[36px] transition-colors"
+                  className="rounded-lg px-3 py-2.5 text-sm font-medium min-h-[44px] transition-colors"
                   style={{
                     background: 'var(--color-surface2)',
                     border: '1px solid var(--color-border)',
@@ -226,7 +226,7 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
       </div>
 
       {/* Input bar */}
-      <div className="px-4 py-3 flex gap-2 max-w-2xl w-full mx-auto" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)' }}>
+      <div className="px-4 pt-3 flex gap-2 max-w-2xl w-full mx-auto" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
