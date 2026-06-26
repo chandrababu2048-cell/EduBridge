@@ -36,10 +36,18 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
   const [showLangPicker, setShowLangPicker] = useState(false);
   const bottomRef = useRef(null);
   const recognitionRef = useRef(null);
+  const mascotTimerRef = useRef(null);
 
   const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
   const showExamples = messages.length === 1 && !loading;
+
+  // Clear any pending mascot timer when the component unmounts
+  useEffect(() => {
+    return () => {
+      if (mascotTimerRef.current) clearTimeout(mascotTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -103,9 +111,13 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
       setMascotState('excited');
       setAnswerConfetti(Date.now());
       playSound?.('correct');
-      setTimeout(() => setMascotState('idle'), 1800);
+      if (mascotTimerRef.current) clearTimeout(mascotTimerRef.current);
+      mascotTimerRef.current = setTimeout(() => setMascotState('idle'), 1800);
     } catch (error) {
-      setMessages((prev) => [...prev, { role: 'assistant', text: 'Oops! Something went wrong. Please try again! 😊' }]);
+      const offlineMsg = !navigator.onLine
+        ? "You're offline right now. 📡 Please check your internet connection and try again!"
+        : 'Oops! Something went wrong. Please try again! 😊';
+      setMessages((prev) => [...prev, { role: 'assistant', text: offlineMsg }]);
       setMascotState('idle');
     } finally {
       setLoading(false);

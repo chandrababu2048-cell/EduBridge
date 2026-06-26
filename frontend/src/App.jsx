@@ -45,13 +45,14 @@ function App() {
   // Load cloud progress when user logs in, merge with local (take the higher value)
   useEffect(() => {
     if (!user || !supabase) return;
+    let cancelled = false;
     supabase
       .from('user_progress')
       .select('*')
       .eq('user_id', user.id)
       .maybeSingle()
       .then(({ data }) => {
-        if (!data) return;
+        if (cancelled || !data) return;
         setXPFromCloud(data.xp);
         setStatsFromCloud({
           totalQuestions: data.total_questions,
@@ -62,6 +63,7 @@ function App() {
           bySubject: data.by_subject ?? {},
         });
       });
+    return () => { cancelled = true; };
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync progress to Supabase whenever XP or stats change (debounced 1.5s)

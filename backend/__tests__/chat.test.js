@@ -108,3 +108,49 @@ describe('POST /api/chat — error handling', () => {
     expect(res.body.error).toBe('Failed to get response');
   });
 });
+
+describe('POST /api/chat — allowlist validation', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('falls back to Math when an invalid subject is sent', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Answer' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Hello', subject: 'HACKED; rm -rf /', ageLevel: 'little', language: 'english' });
+    const callArgs = mockCreate.mock.calls[0][0];
+    // The system prompt must contain "Math" and NOT contain the injected string
+    expect(callArgs.system).toContain('Math');
+    expect(callArgs.system).not.toContain('rm -rf');
+  });
+
+  it('falls back to english when an invalid language is sent', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Answer' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Hello', subject: 'Math', ageLevel: 'little', language: 'klingon' });
+    const callArgs = mockCreate.mock.calls[0][0];
+    expect(callArgs.system).toContain('ENGLISH ONLY');
+  });
+
+  it('truncates chapterName to 120 characters', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Answer' }] });
+    const longChapter = 'A'.repeat(200);
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Hello', subject: 'Math', ageLevel: 'little', language: 'english', grade: 7, chapterName: longChapter, chapterIndex: 1 });
+    const callArgs = mockCreate.mock.calls[0][0];
+    // The chapter name in the system prompt must be truncated to 120 chars
+    expect(callArgs.system).toContain('A'.repeat(120));
+    expect(callArgs.system).not.toContain('A'.repeat(121));
+  });
+
+  it('ignores out-of-range grade values', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Answer' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Hello', subject: 'Math', ageLevel: 'little', language: 'english', grade: 99 });
+    const callArgs = mockCreate.mock.calls[0][0];
+    // No NCERT context should be injected for invalid grade
+    expect(callArgs.system).not.toContain('Class 99');
+  });
+});

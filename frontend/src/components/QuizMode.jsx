@@ -24,7 +24,12 @@ const QuizMode = ({ subject, ageLevel, onDone, playSound }) => {
       body: JSON.stringify({ subject, ageLevel }),
     })
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-      .then((data) => { setQuestions(data.questions); setLoading(false); })
+      .then((data) => {
+        const qs = Array.isArray(data.questions) && data.questions.length > 0 ? data.questions : null;
+        if (!qs) throw new Error('No questions returned');
+        setQuestions(qs);
+        setLoading(false);
+      })
       .catch(() => { setError(true); setLoading(false); });
   }, [subject, ageLevel]);
 

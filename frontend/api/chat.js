@@ -7,6 +7,12 @@ import { getSystemPrompt } from './_lib/systemPrompts.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+// Allowlists — prevent prompt injection via interpolated fields
+const VALID_SUBJECTS = ['Math', 'Science', 'English', 'Civic Sense', 'My Rights', 'Respect & Safety', 'Communication'];
+const VALID_AGE_LEVELS = ['little', 'older'];
+const VALID_LANGUAGES = ['english', 'hindi', 'telugu', 'tamil', 'kannada', 'bengali', 'marathi'];
+const CHAPTER_NAME_MAX_LEN = 120;
+
 // --- Best-effort rate limit (per warm instance) ---
 // Protects the API key from runaway loops. Note: serverless instances are
 // short-lived, so this is a safety net, not a hard global guarantee.
@@ -69,15 +75,36 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'Too many questions! Please wait a minute 😊' });
     }
 
+    // Validate fields against allowlists — they are interpolated into the system prompt
+    const safeSubject = VALID_SUBJECTS.includes(subject) ? subject : 'Math';
+    const safeAgeLevel = VALID_AGE_LEVELS.includes(ageLevel) ? ageLevel : 'little';
+    const safeLanguage = VALID_LANGUAGES.includes(language) ? language : 'english';
+
+    const safeGrade = Number.isInteger(Number(grade)) && Number(grade) >= 1 && Number(grade) <= 12
+      ? Number(grade)
+      : undefined;
+
+    const safeChapterName = typeof chapterName === 'string'
+      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN)
+      : undefined;
+
+    const safeChapterIndex = Number.isInteger(Number(chapterIndex)) && Number(chapterIndex) >= 1
+      ? Number(chapterIndex)
+      : undefined;
+
     // Call Claude with the child-safe system prompt
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: getSystemPrompt(subject, ageLevel, language, { grade, chapterName, chapterIndex }),
+      system: getSystemPrompt(safeSubject, safeAgeLevel, safeLanguage, {
+        grade: safeGrade,
+        chapterName: safeChapterName,
+        chapterIndex: safeChapterIndex,
+      }),
       messages: [{ role: 'user', content: message }]
     });
 
-    logUsage(subject, ageLevel, language);
+    logUsage(safeSubject, safeAgeLevel, safeLanguage);
 
     const reply = response.content?.[0]?.text;
     if (!reply) {
