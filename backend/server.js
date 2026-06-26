@@ -1,12 +1,14 @@
 // EduBridge Backend Server
 // Express server that connects the frontend to the Claude API.
 // V2: adds rate limiting, request logging, a richer health check, and usage analytics.
+// V3: adds Helmet security headers and locked-down CORS.
 
 // Load environment variables FIRST — 'dotenv/config' runs immediately on import,
 // so ANTHROPIC_API_KEY is set before routes/chat.js creates the Anthropic client
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import chatRouter from './routes/chat.js';
@@ -21,8 +23,14 @@ const app = express();
 // Render/Vercel sit behind a proxy — trust it so rate limiting sees real client IPs
 app.set('trust proxy', 1);
 
-// Enable CORS so the frontend can call this API
-app.use(cors());
+// Security headers — sets X-Content-Type-Options, X-Frame-Options, HSTS, etc.
+app.use(helmet());
+
+// CORS — allow only the configured origin (or localhost in dev).
+// In production set ALLOWED_ORIGIN=https://your-app.vercel.app in the Render env vars.
+// In local dev, leave ALLOWED_ORIGIN unset and the server falls back to localhost:5173.
+const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
+app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // Parse incoming JSON request bodies
 app.use(express.json());

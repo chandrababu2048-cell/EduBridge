@@ -43,9 +43,10 @@ router.post('/chat', async (req, res) => {
       ? Number(grade)
       : undefined;
 
-    // chapterName is embedded verbatim in the system prompt — cap its length
+    // chapterName is embedded verbatim in the system prompt — cap its length and
+    // strip characters that could be used to inject prompt-control sequences.
     const safeChapterName = typeof chapterName === 'string'
-      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN)
+      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN).replace(/[<>{}[\]\\]/g, '').trim()
       : undefined;
 
     const safeChapterIndex = Number.isInteger(Number(chapterIndex)) && Number(chapterIndex) >= 1

@@ -84,8 +84,10 @@ export default async function handler(req, res) {
       ? Number(grade)
       : undefined;
 
+    // Strip characters that could be used to inject prompt-control sequences,
+    // then cap the length. This mirrors the hardening in backend/routes/chat.js.
     const safeChapterName = typeof chapterName === 'string'
-      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN)
+      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN).replace(/[<>{}[\]\\]/g, '').trim()
       : undefined;
 
     const safeChapterIndex = Number.isInteger(Number(chapterIndex)) && Number(chapterIndex) >= 1
