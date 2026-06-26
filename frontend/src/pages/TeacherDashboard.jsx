@@ -186,35 +186,38 @@ function CreateClassModal({ onClose, onCreated, teacherId }) {
             <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--color-text)' }}>Create a new class</h2>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Class name</label>
+                <label htmlFor="create-class-name" className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Class name</label>
                 <input
+                  id="create-class-name"
                   autoFocus
                   type="text"
                   placeholder="e.g. Class 7A · Science"
                   value={className}
                   onChange={(e) => setClassName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                   style={inputStyle}
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Subject</label>
+                <label htmlFor="create-class-subject" className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Subject</label>
                 <select
+                  id="create-class-subject"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none cursor-pointer"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] cursor-pointer"
                   style={inputStyle}
                 >
                   {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Grade</label>
+                <label htmlFor="create-class-grade" className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Grade</label>
                 <select
+                  id="create-class-grade"
                   value={grade}
                   onChange={(e) => setGrade(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl text-sm outline-none cursor-pointer"
+                  className="w-full px-4 py-3 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] cursor-pointer"
                   style={inputStyle}
                 >
                   {ALL_GRADES.map((g) => <option key={g} value={String(g)}>Class {g}</option>)}

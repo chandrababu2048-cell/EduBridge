@@ -244,7 +244,7 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
           placeholder={listening ? 'Listening…' : 'Ask me anything…'}
-          className="flex-1 rounded-xl px-4 py-3 text-sm outline-none min-h-[44px] transition-colors"
+          className="flex-1 rounded-xl px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] min-h-[44px] transition-colors"
           style={{
             background: 'var(--color-surface2)',
             border: '1px solid var(--color-border)',

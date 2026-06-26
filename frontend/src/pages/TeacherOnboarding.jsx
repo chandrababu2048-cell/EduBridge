@@ -49,16 +49,16 @@ function StepBar({ step }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, htmlFor, children }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{label}</label>
+      <label htmlFor={htmlFor} className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>{label}</label>
       {children}
     </div>
   );
 }
 
-const inputClass = `w-full px-4 py-3 rounded-xl text-sm outline-none transition-all`;
+const inputClass = `w-full px-4 py-3 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] transition-all`;
 const inputStyle = {
   background: 'var(--color-surface)',
   border: '1.5px solid var(--color-border)',
@@ -246,8 +246,9 @@ export default function TeacherOnboarding() {
                   ))}
                 </div>
 
-                <Field label="Email address">
+                <Field label="Email address" htmlFor="onboard-email">
                   <input
+                    id="onboard-email"
                     type="email"
                     placeholder="you@school.edu"
                     value={email}
@@ -258,8 +259,9 @@ export default function TeacherOnboarding() {
                     autoFocus
                   />
                 </Field>
-                <Field label="Password">
+                <Field label="Password" htmlFor="onboard-password">
                   <input
+                    id="onboard-password"
                     type="password"
                     placeholder="Min 6 characters"
                     value={password}
@@ -312,8 +314,9 @@ export default function TeacherOnboarding() {
                 <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
                   Tell us about yourself 👋
                 </h2>
-                <Field label="Your full name">
+                <Field label="Your full name" htmlFor="onboard-name">
                   <input
+                    id="onboard-name"
                     type="text"
                     placeholder="e.g. Priya Sharma"
                     value={name}
@@ -323,8 +326,9 @@ export default function TeacherOnboarding() {
                     autoFocus
                   />
                 </Field>
-                <Field label="School name">
+                <Field label="School name" htmlFor="onboard-school">
                   <input
+                    id="onboard-school"
                     type="text"
                     placeholder="e.g. Government High School, Hyderabad"
                     value={school}
@@ -391,8 +395,9 @@ export default function TeacherOnboarding() {
                 <h2 className="text-lg font-bold" style={{ color: 'var(--color-text)' }}>
                   Create your first class 🎓
                 </h2>
-                <Field label="Class name">
+                <Field label="Class name" htmlFor="onboard-class-name">
                   <input
+                    id="onboard-class-name"
                     type="text"
                     placeholder="e.g. Class 7A · Science"
                     value={className}
@@ -402,8 +407,9 @@ export default function TeacherOnboarding() {
                     autoFocus
                   />
                 </Field>
-                <Field label="Subject">
+                <Field label="Subject" htmlFor="onboard-class-subject">
                   <select
+                    id="onboard-class-subject"
                     value={classSubject}
                     onChange={(e) => setClassSubject(e.target.value)}
                     className={inputClass}
@@ -412,8 +418,9 @@ export default function TeacherOnboarding() {
                     {SUBJECTS.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 </Field>
-                <Field label="Grade">
+                <Field label="Grade" htmlFor="onboard-class-grade">
                   <select
+                    id="onboard-class-grade"
                     value={classGrade}
                     onChange={(e) => setClassGrade(e.target.value)}
                     className={inputClass}

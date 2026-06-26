@@ -148,7 +148,7 @@ function App() {
           onSignOut={signOut}
         />
 
-        <main className="flex-1 flex flex-col min-h-0">
+        <main id="main-content" className="flex-1 flex flex-col min-h-0">
           <AnimatePresence mode="wait">
             {view === 'welcome' && (
               <motion.div

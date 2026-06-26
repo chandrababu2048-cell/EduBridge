@@ -190,7 +190,7 @@ export default function StudentJoin() {
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleNameSubmit()}
-                  className="w-full px-4 py-3 rounded-xl text-base outline-none"
+                  className="w-full px-4 py-3 rounded-xl text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                   style={inputStyle}
                   maxLength={60}
                 />
@@ -245,27 +245,29 @@ export default function StudentJoin() {
                 </div>
 
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Email</label>
+                  <label htmlFor="join-email" className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Email</label>
                   <input
+                    id="join-email"
                     autoFocus
                     type="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); setAuthError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                     style={inputStyle}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Password</label>
+                  <label htmlFor="join-password" className="text-sm font-semibold" style={{ color: 'var(--color-text)' }}>Password</label>
                   <input
+                    id="join-password"
                     type="password"
                     placeholder="Min 6 characters"
                     value={password}
                     onChange={(e) => { setPassword(e.target.value); setAuthError(''); }}
                     onKeyDown={(e) => e.key === 'Enter' && handleAuth()}
-                    className="w-full px-4 py-3 rounded-xl text-sm outline-none"
+                    className="w-full px-4 py-3 rounded-xl text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
                     style={inputStyle}
                   />
                 </div>
@@ -330,7 +332,7 @@ export default function StudentJoin() {
                       setCodeError('');
                     }}
                     onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                    className="w-full px-6 py-4 rounded-xl text-center font-black text-3xl tracking-[0.3em] outline-none uppercase"
+                    className="w-full px-6 py-4 rounded-xl text-center font-black text-3xl tracking-[0.3em] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] uppercase"
                     style={{ ...inputStyle, caretColor: 'var(--color-primary)' }}
                     spellCheck={false}
                     autoComplete="off"

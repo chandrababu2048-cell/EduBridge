@@ -2,24 +2,28 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext.jsx';
 
-const Field = ({ label, type, value, onChange, placeholder }) => (
-  <div className="flex flex-col gap-1.5">
-    <label className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>{label}</label>
-    <input
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      className="rounded-xl px-4 py-3 text-sm outline-none transition-colors"
-      style={{
-        background: 'var(--color-surface2)',
-        border: '1px solid var(--color-border)',
-        color: 'var(--color-text)',
-      }}
-      autoComplete={type === 'password' ? 'current-password' : 'email'}
-    />
-  </div>
-);
+const Field = ({ label, type, value, onChange, placeholder }) => {
+  const id = `auth-field-${type}`;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label htmlFor={id} className="text-xs font-medium uppercase tracking-wide" style={{ color: 'var(--color-muted)' }}>{label}</label>
+      <input
+        id={id}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="rounded-xl px-4 py-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] transition-colors"
+        style={{
+          background: 'var(--color-surface2)',
+          border: '1px solid var(--color-border)',
+          color: 'var(--color-text)',
+        }}
+        autoComplete={type === 'password' ? 'current-password' : 'email'}
+      />
+    </div>
+  );
+};
 
 export const AuthModal = ({ onClose }) => {
   const { signIn, signUp } = useAuth();

@@ -895,6 +895,7 @@ export default function LandingPage() {
   return (
     <div style={{ background: 'var(--color-bg)', minHeight: '100vh' }}>
       <Nav />
+      <div id="main-content">
       <Hero stats={stats} />
       <Features />
       <HowItWorks />
@@ -903,6 +904,7 @@ export default function LandingPage() {
       <SocialProof />
       <ForTeachers />
       <Footer />
+      </div>
     </div>
   );
 }
