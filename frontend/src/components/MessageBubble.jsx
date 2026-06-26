@@ -38,6 +38,7 @@ const MessageBubble = ({ role, text }) => {
             {ttsSupported && (
               <button
                 onClick={toggleSpeak}
+                aria-label={speaking ? 'Stop reading aloud' : 'Read aloud'}
                 className="mt-2 text-xs font-medium transition-colors"
                 style={{ color: speaking ? 'var(--color-primary)' : 'var(--color-muted)' }}
               >

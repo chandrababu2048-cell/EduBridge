@@ -46,6 +46,12 @@ describe('POST /api/chat — input validation', () => {
     const res = await request(app).post('/api/chat').send({ message: 42, subject: 'Math', ageLevel: 'little' });
     expect(res.status).toBe(400);
   });
+
+  it('returns 400 when message exceeds 2000 characters', async () => {
+    const res = await request(app).post('/api/chat').send({ message: 'a'.repeat(2001), subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('too long');
+  });
 });
 
 describe('POST /api/chat — successful response', () => {
@@ -86,6 +92,15 @@ describe('POST /api/chat — error handling', () => {
 
   it('returns 500 when the Claude API throws', async () => {
     mockCreate.mockRejectedValue(new Error('API unavailable'));
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'What is math?', subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBe('Failed to get response');
+  });
+
+  it('returns 500 when Claude returns an empty content array', async () => {
+    mockCreate.mockResolvedValue({ content: [] });
     const res = await request(app)
       .post('/api/chat')
       .send({ message: 'What is math?', subject: 'Math', ageLevel: 'little' });

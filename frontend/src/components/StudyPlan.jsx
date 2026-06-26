@@ -15,6 +15,7 @@ const StudyPlan = ({ stats, ageLevel, onSelectSubject }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stats, ageLevel }),
       });
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       setPlan(data);
       setOpen(true);

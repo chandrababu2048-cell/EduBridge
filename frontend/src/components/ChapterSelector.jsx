@@ -30,6 +30,7 @@ export default function ChapterSelector({ subject, grade, chapter, setChapter })
       <select
         value={chapter ?? ''}
         onChange={(e) => setChapter(e.target.value === '' ? null : Number(e.target.value))}
+        aria-label={`Select NCERT chapter for ${subject} Class ${grade}`}
         className="w-full px-3 py-2.5 rounded-xl text-sm outline-none cursor-pointer"
         style={{
           background: 'var(--color-surface2)',

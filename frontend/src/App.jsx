@@ -78,6 +78,8 @@ function App() {
         learned_early: stats.learnedEarly,
         by_subject: stats.bySubject,
         updated_at: new Date().toISOString(),
+      }).then(({ error }) => {
+        if (error) console.warn('Progress sync error:', error.message);
       });
     }, 1500);
     return () => clearTimeout(timer);

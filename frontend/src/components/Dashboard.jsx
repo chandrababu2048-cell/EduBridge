@@ -19,6 +19,7 @@ const Dashboard = ({ onBack }) => {
     setReportLoading(true);
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/report`);
+      if (!res.ok) throw new Error(`Server error ${res.status}`);
       const data = await res.json();
       setReport(data);
     } catch {

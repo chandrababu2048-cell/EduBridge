@@ -18,6 +18,7 @@ const Header = ({ xp, level, levelData, nextLevelXP, muted, onToggleMute, user, 
           <button
             onClick={onSignOut}
             title={`${user.email} — click to sign out`}
+            aria-label={`Signed in as ${user.email}. Click to sign out.`}
             className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
             style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
           >

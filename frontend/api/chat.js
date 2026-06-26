@@ -58,6 +58,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
+    // Reject messages that are unreasonably long to protect API costs
+    if (message.length > 2000) {
+      return res.status(400).json({ error: 'Message is too long. Please keep it under 2000 characters.' });
+    }
+
     // Kid-friendly rate-limit message
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     if (isRateLimited(ip)) {
@@ -74,7 +79,12 @@ export default async function handler(req, res) {
 
     logUsage(subject, ageLevel, language);
 
-    res.status(200).json({ reply: response.content[0].text });
+    const reply = response.content?.[0]?.text;
+    if (!reply) {
+      console.error('Claude returned no content');
+      return res.status(500).json({ error: 'Failed to get response' });
+    }
+    res.status(200).json({ reply });
   } catch (error) {
     console.error('Claude API error:', error);
     res.status(500).json({ error: 'Failed to get response' });
