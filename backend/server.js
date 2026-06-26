@@ -30,6 +30,9 @@ app.use(helmet());
 // In production set ALLOWED_ORIGIN=https://your-app.vercel.app in the Render env vars.
 // In local dev, leave ALLOWED_ORIGIN unset and the server falls back to localhost:5173.
 const allowedOrigin = process.env.ALLOWED_ORIGIN || 'http://localhost:5173';
+if (!process.env.ALLOWED_ORIGIN) {
+  console.warn('[CORS] ALLOWED_ORIGIN not set — defaulting to localhost. Set this in production.');
+}
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 
 // Parse incoming JSON request bodies
@@ -70,4 +73,4 @@ app.get('/health', (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`EduBridge backend running on port ${PORT}`));
+app.listen(PORT, () => console.warn(`[server] EduBridge backend running on port ${PORT}`));
