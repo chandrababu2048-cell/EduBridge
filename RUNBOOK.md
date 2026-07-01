@@ -1,115 +1,119 @@
-# 📖 EduBridge Runbook
+# 📖 EduBridge Operations Runbook
 
-## How to Keep EduBridge Running
+For anyone maintaining EduBridge who did not write it. Assumes access to the project's **Vercel**, **Supabase**, **Anthropic Console**, and **GitHub** accounts.
 
-This document is for anyone maintaining EduBridge after handoff.
-It is written so a non-technical person can follow it. You do not need to know how to code.
+## Architecture at a Glance
 
-EduBridge runs entirely on **one Vercel project** — the website and the AI behind it
-are hosted together. There is no separate server to manage.
-
-> Replace `<your-app>` below with your real Vercel address, e.g. `edubridge-tutor.vercel.app`.
+- **One Vercel project** (root directory `frontend/`) hosts everything users touch: the static React app **and** the API as serverless functions (`frontend/api/`).
+- **Supabase** hosts auth, teacher/student data, and the `usage_events` analytics table (your Supabase project → all keys live in Vercel env vars).
+- The **Express server** (`backend/`) is local-dev/eval only — nothing in production depends on it. **GitHub Actions** runs 147 tests on every push.
 
 ---
 
-## 🟢 Is EduBridge Working?
+## Routine Operations
 
-1. **Check the health page:** `https://<your-app>.vercel.app/api/health`
-   - If you see `{"status":"healthy", ...}` → everything is fine ✅
-2. **Open the app:** `https://<your-app>.vercel.app` and ask one question to confirm it answers.
+### Is it up?
 
----
+1. `https://<your-app>.vercel.app/api/health` → expect `{"status":"healthy", ...}`.
+2. Open the app, ask one question, confirm an answer arrives.
 
-## 🔑 The One Thing That Must Never Expire
+### Vercel deploy status & logs
 
-EduBridge needs an **Anthropic API key** to work. This is what lets it talk to Claude.
+- **Deploys:** vercel.com → your project → **Deployments** tab. Green = live. A failed deploy shows a red ✗ — click it → **Build Logs**.
+- **Runtime logs (API errors):** project → **Logs** tab (or open a deployment → **Functions**). Filter by `/api/chat` to see chat failures with stack traces.
 
-- **Where it lives:** vercel.com → your EduBridge project → **Settings → Environment Variables → `ANTHROPIC_API_KEY`**
+### Supabase health
 
-**To update the key:**
-1. Go to **console.anthropic.com** and sign in.
-2. Create a new API key and copy it.
-3. Go to **vercel.com** → your EduBridge project → **Settings → Environment Variables**.
-4. Edit `ANTHROPIC_API_KEY` and paste the new value. Save.
-5. Go to the **Deployments** tab → open the latest deployment → **⋯ → Redeploy** so the new key takes effect.
+- supabase.com/dashboard → your project → **Home** shows database/API status and usage against free-tier quotas.
+- **Auth activity:** **Authentication → Users**. **Data:** **Table Editor**.
 
-> 💡 Keep an eye on the billing balance at console.anthropic.com so the key never runs out of credit.
+### Reading usage analytics
 
----
+Supabase dashboard → **SQL Editor**:
 
-## 📊 Check How Many Kids Are Using It
-
-Two ways:
-
-1. **In the app:** open it, scroll to the bottom of the welcome screen, and tap
-   **"📊 For teachers: view usage stats."**
-2. **Direct link:** `https://<your-app>.vercel.app/api/analytics/stats`
-
-> ⚠️ On the free Vercel setup these numbers are **approximate and may reset**, because the
-> free plan has no database. The dashboard still works for a rough sense of activity. For
-> exact long-term tracking, a developer can add **Vercel KV** (a free key-value store) later.
-
----
-
-## 🚨 Common Problems & Fixes
-
-### Problem: Kids see "Oops! Something went wrong"
-**Likely cause:** the API key is invalid or out of credit.
-**Fix:** check the key and balance at console.anthropic.com, then update the key on Vercel (see above).
-
-### Problem: "Too many questions! Please wait a minute"
-**This is normal.** EduBridge limits very rapid repeat questions to keep costs safe.
-The child just needs to wait about a minute, then continue.
-
-### Problem: The app won't load at all
-**Fix:** check Vercel's status at **vercel.com/status**. If Vercel is up, go to your project's
-**Deployments** tab and **Redeploy** the latest one.
-
-### Problem: The "Listen" button or microphone doesn't appear
-**This depends on the child's browser/device, not the server.** Read-aloud and voice input use
-built-in browser features and work best in Chrome and on most phones. If they're missing, the
-buttons simply won't show — the app still works by typing.
-
----
-
-## 🧪 Testing the Answer Quality (Optional, for a technical helper)
-
-There's a built-in check that asks Claude a few sample questions and confirms the answers are
-simple and age-appropriate. From the `backend` folder, run:
-
-```
-npm run eval
+```sql
+select count(*) from usage_events;                          -- total questions answered
+select date_trunc('day', created_at) d, count(*)
+from usage_events group by 1 order by 1 desc limit 14;      -- last 14 days
+select subject, count(*) from usage_events group by 1;      -- by subject
 ```
 
-It prints ✅ PASS / ❌ FAIL for each test and an overall score. Use this after changing the
-tutor's instructions (in `backend/prompts/systemPrompts.js` **and** `frontend/api/_lib/systemPrompts.js`)
-to make sure answers are still kid-friendly.
-
-> Note: the tutor's instructions exist in two places — `backend/` (for local testing) and
-> `frontend/api/_lib/` (what the live site uses). Keep them the same.
+No PII exists in this table — only subject/age band/language/grade + timestamp.
 
 ---
 
-## 💰 Monthly Costs
+## 🚨 Incident Playbook
 
-| Service | Cost |
-|---------|------|
-| Vercel (website + API) | FREE |
-| Anthropic API | ~$5–10/month depending on usage |
-
----
-
-## 📞 Who Built This
-
-Built by **Chandrababu Anakapalli**
-GitHub: github.com/chandrababu2048-cell/EduBridge
-Email: chandrababunaidu2048@gmail.com
+| Symptom | Diagnosis | Fix |
+|---|---|---|
+| Chat returns 500; Vercel function logs show **"credit balance is too low"** | Anthropic account out of credit | console.anthropic.com → **Billing** → add credits. No redeploy needed — recovers immediately. |
+| Chat returns 500 (anything else) | Unknown API error | Vercel → **Logs** → filter `/api/chat`, read the stack trace. Common: invalid/rotated `ANTHROPIC_API_KEY` (rotate — see below), or Anthropic outage (status.anthropic.com). |
+| Users report **"Too many questions! Please wait a minute"** | Per-IP rate limit: **20 requests/min**, set in `frontend/api/chat.js` (`MAX_PER_WINDOW`) | Usually working as intended (whole classrooms behind one NAT IP can trip it). To raise: edit `MAX_PER_WINDOW` in `frontend/api/chat.js` **and** `frontend/api/agents/safety-check.js`, commit, push — mind API costs. |
+| Sign-in fails / progress not saving | Supabase auth problem | Check `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` in Vercel env vars match Supabase → **Settings → API**. Check Supabase dashboard for paused project (free tier pauses after inactivity — click **Restore**) or exceeded quotas. Guest mode keeps working regardless. |
+| Landing-page stats stuck at the fallback numbers (12,480+) | `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` missing or wrong on Vercel, so `/api/public/stats` can't count `usage_events` | Vercel → **Settings → Environment Variables** → set both (values from Supabase → Settings → API) → **Redeploy**. Note: stats are edge-cached for 1 hour — wait before judging. |
+| CI red on `main` | A test or build failure | GitHub → **Actions** tab → click the red run → click the failing job (`frontend`, `backend`, or `e2e`) → expand the red step. The log shows exactly which test failed and why. Fix locally (`npm test` in that folder), push. |
+| App won't load at all | Vercel platform or bad deploy | Check vercel.com/status. If Vercel is fine: **Deployments** → previous good deployment → **⋯ → Promote to Production** (instant rollback). |
 
 ---
 
-## 🌱 How to Add New Features
+## 🔑 Key Rotation
 
-1. Go to **github.com/chandrababu2048-cell/EduBridge**
-2. Click **Issues** → **New Issue**
-3. Describe what you need in plain language.
-4. A developer can pick it up from there.
+### Anthropic API key
+
+1. console.anthropic.com → **API Keys** → **Create Key** → copy it.
+2. vercel.com → project → **Settings → Environment Variables** → edit `ANTHROPIC_API_KEY` → paste → **Save**.
+3. **Deployments** → latest → **⋯ → Redeploy** (env vars only apply on deploy).
+4. Verify chat works, then delete the old key in the Anthropic console.
+
+### Supabase keys
+
+1. supabase.com/dashboard → your project → **Settings → API** → **Reset/rotate** the key (anon or service_role). ⚠️ Rotation invalidates the old key immediately.
+2. In Vercel env vars update: `VITE_SUPABASE_ANON_KEY` (anon) and/or `SUPABASE_SERVICE_ROLE_KEY` (service role). `VITE_SUPABASE_URL`/`SUPABASE_URL` don't change.
+3. Redeploy on Vercel; verify sign-in and `/api/public/stats`.
+
+The service-role key bypasses all row-level security — it must only ever exist in Vercel server-side env vars (no `VITE_` prefix, never in git).
+
+---
+
+## 💰 Cost Controls
+
+- **What costs money:** Claude API tokens. Each question = one Haiku safety check (tiny) + one Sonnet answer capped at 1,024 output tokens — roughly **$0.01–0.02 per question**. Vercel and Supabase free tiers cover everything else at current scale.
+- **Built-in limiter:** 20 requests/min per IP on both `/api/chat` and the safety check; messages capped at 2,000 chars; history capped at 10 turns.
+- **Hard backstop:** console.anthropic.com → **Settings → Limits** → set a monthly **spend limit**.
+- **Recommended:** also set a budget **alert** (e.g. at 50%) in the Anthropic console so you're emailed before the limit halts the tutor.
+
+---
+
+## 🌱 Making Changes
+
+Everything below the UI is shared logic: the canonical modules live in `frontend/api/_lib/` and are re-exported by `shared/` for the backend. Never duplicate — always edit the `_lib` file.
+
+### Add a language
+1. `frontend/src/components/ChatBox.jsx` → add to the `LANGUAGES` array (code, label, native name, speech locale).
+2. `frontend/api/_lib/validation.js` → add the code to `VALID_LANGUAGES` (otherwise it falls back to English).
+3. `frontend/api/_lib/systemPrompts.js` → add a `LANGUAGE_INSTRUCTIONS` entry **written in that language** ("reply only in X").
+
+### Add a subject / learning track
+1. `frontend/src/subjectThemes.js` → add to `SUBJECT_THEMES` (category, color, mascot, greeting, example questions).
+2. `frontend/api/_lib/validation.js` → add to `VALID_SUBJECTS`.
+3. `frontend/api/_lib/systemPrompts.js` → add teaching instructions for the subject.
+
+### Add / edit NCERT grades & chapters
+- `frontend/src/data/ncert.js` → `NCERT_CHAPTERS[subject][grade]` is an array of chapter names (position = chapter number). Grades 1–12 are already allowlisted in `validation.js`.
+
+After any change: `cd frontend && npm test`, push, and let CI go green before Vercel deploys.
+
+---
+
+## 💾 Backup & Restore
+
+- Supabase (paid plans) takes **daily automatic backups**: dashboard → **Database → Backups** → restore from there. On the **free tier there are no automatic backups** — periodically export manually: **Database → Backups → Download**, or run `supabase db dump` with the CLI, and keep the file somewhere safe.
+- The schema is always reproducible from git: `backend/supabase/migrations/001…003` applied in order to a fresh project.
+- Code needs no backup — it's all on GitHub; any commit can be redeployed from the Vercel Deployments tab.
+
+---
+
+## 📞 Contact
+
+Built by **Chandrababu Anakapalli** · github.com/chandrababu2048-cell/EduBridge
+For new features: open a GitHub **Issue** describing what you need in plain language.
