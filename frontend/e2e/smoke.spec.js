@@ -96,3 +96,30 @@ test('PWA manifest is served with the EduBridge name', async ({ request }) => {
   const manifest = await response.json();
   expect(manifest.name).toContain('EduBridge');
 });
+
+test('photo-a-problem: upload shows a preview, remove clears it', async ({ page }) => {
+  await openChat(page);
+
+  // The camera button opens the hidden file input.
+  await expect(
+    page.getByRole('button', { name: 'Send a photo of your problem' })
+  ).toBeVisible();
+
+  // A real 1x1 red-pixel PNG so FileReader produces a valid data URL.
+  const onePixelPng = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64'
+  );
+  await page.getByTestId('photo-input').setInputFiles({
+    name: 'problem.png',
+    mimeType: 'image/png',
+    buffer: onePixelPng,
+  });
+
+  // Preview thumbnail appears with a remove button.
+  await expect(page.getByAltText('photo of the problem, ready to send')).toBeVisible();
+  await page.getByRole('button', { name: 'Remove photo' }).click();
+  await expect(
+    page.getByAltText('photo of the problem, ready to send')
+  ).not.toBeVisible();
+});

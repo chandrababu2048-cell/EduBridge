@@ -35,8 +35,11 @@ if (!process.env.ALLOWED_ORIGIN) {
 }
 app.use(cors({ origin: allowedOrigin, credentials: true }));
 
-// Parse incoming JSON request bodies
-app.use(express.json());
+// Parse incoming JSON request bodies. Default limit is 100kb — far too small
+// for photo-a-problem uploads (up to ~4.2MB of base64 image data, matching
+// the shared validation cap which itself stays under Vercel's 4.5MB body
+// limit so dev and production accept the same payloads).
+app.use(express.json({ limit: '5mb' }));
 
 // Request logging with timestamps (Apache "combined" format includes date + IP)
 app.use(morgan('combined'));

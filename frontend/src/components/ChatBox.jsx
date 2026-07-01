@@ -37,6 +37,11 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
   const bottomRef = useRef(null);
   const recognitionRef = useRef(null);
   const mascotTimerRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // Photo-a-problem: a pending photo waiting to be sent with the next message.
+  // { dataUrl (for the preview + bubble thumbnail), base64 (payload), mediaType }
+  const [pendingImage, setPendingImage] = useState(null);
 
   // Conversation memory sent to the tutor so "explain that again" works.
   // Only REAL user↔tutor exchanges go in here (updated on successful replies),
@@ -61,17 +66,54 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
+  // Photo-a-problem: validate and stage a photo of a textbook/homework problem.
+  // Client cap is 3MB binary — Vercel serverless rejects bodies over ~4.5MB and
+  // base64 inflates by 4/3, so 3MB binary ≈ 4.1MB base64 stays safely under it.
+  const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+  const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+  const handlePhotoPick = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-picking the same file after remove
+    if (!file) return;
+    if (!IMAGE_TYPES.includes(file.type)) {
+      setMessages((prev) => [...prev, { role: 'assistant', text: 'I can only read JPG, PNG, or WebP photos! 📷 Try taking a photo with your camera.' }]);
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setMessages((prev) => [...prev, { role: 'assistant', text: "That photo is too big! 📷 Try a smaller one, or take the photo again a bit further from the page." }]);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      // Strip the "data:image/…;base64," prefix — the API wants raw base64.
+      const base64 = String(dataUrl).split(',')[1] ?? '';
+      setPendingImage({ dataUrl, base64, mediaType: file.type });
+    };
+    reader.onerror = () => {
+      setMessages((prev) => [...prev, { role: 'assistant', text: "Hmm, I couldn't read that photo. 📷 Please try again!" }]);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const sendMessage = async (textArg) => {
-    const userMessage = (textArg ?? input).trim();
-    if (!userMessage || loading) return;
+    // A photo may be sent alone — the tutor gets a default question with it.
+    const typedMessage = (textArg ?? input).trim();
+    const image = pendingImage;
+    if ((!typedMessage && !image) || loading) return;
+    const userMessage = typedMessage || 'Can you explain this problem to me?';
 
     setInput('');
-    setMessages((prev) => [...prev, { role: 'user', text: userMessage }]);
+    setPendingImage(null);
+    setMessages((prev) => [...prev, { role: 'user', text: userMessage, imageUrl: image?.dataUrl }]);
     setLoading(true);
     setMascotState('thinking');
 
     try {
-      // Safety check before reaching the tutor
+      // Safety check before reaching the tutor. Note: the pre-screen sees only
+      // the TEXT — attached photos are not screened (the tutor system prompt
+      // constrains responses regardless, and photos are of textbook problems).
       const safetyRes = await fetch(`${import.meta.env.VITE_API_URL}/api/agents/safety-check`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -112,6 +154,9 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
             // Previous real exchanges (excludes greeting/canned/error messages
             // and the just-sent message — see historyRef above).
             history: historyRef.current,
+            // Photo-a-problem: raw base64 (no data: prefix) + media type.
+            // Images never go into history — text answers carry the context.
+            ...(image ? { image: { data: image.base64, mediaType: image.mediaType } } : {}),
           })
       });
       if (!response.ok) throw new Error('API error');
@@ -212,7 +257,7 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 max-w-2xl w-full mx-auto">
         {messages.map((msg, i) => (
-          <MessageBubble key={i} role={msg.role} text={msg.text} />
+          <MessageBubble key={i} role={msg.role} text={msg.text} imageUrl={msg.imageUrl} />
         ))}
 
         {showExamples && (
@@ -254,6 +299,29 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
         <div ref={bottomRef} />
       </div>
 
+      {/* Pending photo preview */}
+      {pendingImage && (
+        <div className="px-4 pt-2 max-w-2xl w-full mx-auto" style={{ background: 'var(--color-surface)' }}>
+          <div className="inline-flex items-center gap-2 rounded-xl p-1.5" style={{ background: 'var(--color-surface2)', border: '1px solid var(--color-border)' }}>
+            <img
+              src={pendingImage.dataUrl}
+              alt="photo of the problem, ready to send"
+              className="rounded-lg object-cover"
+              style={{ height: 56, width: 56 }}
+            />
+            <span className="text-xs font-medium pr-1" style={{ color: 'var(--color-muted)' }}>Photo ready 📸</span>
+            <button
+              onClick={() => setPendingImage(null)}
+              aria-label="Remove photo"
+              className="rounded-lg text-sm font-bold flex items-center justify-center transition-colors"
+              style={{ minWidth: 44, minHeight: 44, color: 'var(--color-muted)' }}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input bar */}
       <div className="px-4 pt-3 flex gap-2 max-w-2xl w-full mx-auto" style={{ borderTop: '1px solid var(--color-border)', background: 'var(--color-surface)', paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}>
         <input
@@ -268,6 +336,31 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
             color: 'var(--color-text)',
           }}
         />
+
+        {/* Photo-a-problem: hidden file input + camera button.
+            capture="environment" opens the rear camera on phones;
+            on desktop it falls back to a normal file picker. */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          capture="environment"
+          onChange={handlePhotoPick}
+          className="hidden"
+          data-testid="photo-input"
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="Send a photo of your problem"
+          className="px-3 py-2 rounded-xl min-h-[44px] transition-all"
+          style={{
+            background: pendingImage ? 'rgba(2,216,233,0.15)' : 'var(--color-surface2)',
+            border: '1px solid var(--color-border)',
+            color: pendingImage ? 'var(--color-primary)' : 'var(--color-muted)',
+          }}
+        >
+          📷
+        </button>
 
         {SpeechRecognition && (
           <button

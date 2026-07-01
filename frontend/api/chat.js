@@ -61,13 +61,24 @@ export default async function handler(req, res) {
     if (!result.ok) {
       return res.status(400).json({ error: result.error });
     }
-    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history } = result.sanitized;
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history, image } = result.sanitized;
 
     // Kid-friendly rate-limit message
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
     if (isRateLimited(ip)) {
       return res.status(429).json({ error: 'Too many questions! Please wait a minute 😊' });
     }
+
+    // Photo-a-problem: when a validated image is attached, the final user turn
+    // becomes a content-block array (image first, then the question) so Claude
+    // vision can read the problem off the photo. History stays plain text —
+    // images are never echoed back into history (cost + validation strips them).
+    const userContent = image
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
+          { type: 'text', text: message },
+        ]
+      : message;
 
     // Call Claude with the child-safe system prompt.
     // Conversation memory: the sanitized history is guaranteed to be a valid
@@ -76,10 +87,10 @@ export default async function handler(req, res) {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: getSystemPrompt(subject, ageLevel, language, { grade, chapterName, chapterIndex }),
+      system: getSystemPrompt(subject, ageLevel, language, { grade, chapterName, chapterIndex, hasImage: Boolean(image) }),
       messages: [
         ...history.map(({ role, text }) => ({ role, content: text })),
-        { role: 'user', content: message },
+        { role: 'user', content: userContent },
       ]
     });
 

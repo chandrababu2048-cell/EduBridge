@@ -20,7 +20,11 @@ export {
   MAX_MESSAGE_LENGTH,
   MAX_HISTORY_ENTRIES,
   CHAPTER_NAME_MAX_LEN,
+  VALID_IMAGE_TYPES,
+  MAX_IMAGE_BASE64_CHARS,
+  DEFAULT_IMAGE_QUESTION,
   validateChatRequest,
+  validateImage,
 } from './validation.js';
 export {
   createSafetyChecker,

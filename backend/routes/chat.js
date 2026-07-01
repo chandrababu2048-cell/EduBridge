@@ -26,14 +26,27 @@ router.post('/chat', async (req, res) => {
     if (!result.ok) {
       return res.status(400).json({ error: result.error });
     }
-    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history } = result.sanitized;
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history, image } = result.sanitized;
 
-    // Build the child-friendly system prompt for this subject/age/language
+    // Build the child-friendly system prompt for this subject/age/language.
+    // hasImage adds the photo-a-problem instruction (read the photo first).
     const systemPrompt = getSystemPrompt(subject, ageLevel, language, {
       grade,
       chapterName,
       chapterIndex,
+      hasImage: Boolean(image),
     });
+
+    // Photo-a-problem: when a validated image is attached, the final user turn
+    // becomes a content-block array (image first, then the question) so Claude
+    // vision can read the problem off the photo. History stays plain text —
+    // images are never echoed back into history (cost + validation strips them).
+    const userContent = image
+      ? [
+          { type: 'image', source: { type: 'base64', media_type: image.mediaType, data: image.data } },
+          { type: 'text', text: message },
+        ]
+      : message;
 
     // Call Claude API (claude-sonnet-4-6, max 1024 tokens per AGENTS.md).
     // Conversation memory: the sanitized history is guaranteed to be a valid
@@ -45,7 +58,7 @@ router.post('/chat', async (req, res) => {
       system: systemPrompt,
       messages: [
         ...history.map(({ role, text }) => ({ role, content: text })),
-        { role: 'user', content: message },
+        { role: 'user', content: userContent },
       ]
     });
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 
-const MessageBubble = ({ role, text }) => {
+const MessageBubble = ({ role, text, imageUrl }) => {
   const isAI = role === 'assistant';
   const [speaking, setSpeaking] = useState(false);
   const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
@@ -52,6 +52,14 @@ const MessageBubble = ({ role, text }) => {
           className="rounded-2xl rounded-tr-none px-4 py-3 max-w-[75%]"
           style={{ background: 'var(--color-primary)', color: 'var(--color-primary-text)' }}
         >
+          {imageUrl && (
+            <img
+              src={imageUrl}
+              alt="photo of the problem"
+              className="rounded-lg mb-2 object-contain"
+              style={{ maxHeight: 160, maxWidth: '100%' }}
+            />
+          )}
           <p>{text}</p>
         </div>
       )}

@@ -44,9 +44,15 @@ const LANGUAGE_INSTRUCTIONS = {
   marathi:  'तुमचे संपूर्ण उत्तर फक्त मराठीत लिहा. एकही इंग्रजी शब्द वापरू नका. "Hello" ऐवजी "नमस्कार", "I am" ऐवजी "मी आहे" — सगळे मराठीत।',
 };
 
-export const getSystemPrompt = (subject, ageLevel, language, { grade, chapterName, chapterIndex } = {}) => {
+export const getSystemPrompt = (subject, ageLevel, language, { grade, chapterName, chapterIndex, hasImage } = {}) => {
   const age = ageLevel === 'little' ? '6 to 10 years old' : '11 to 14 years old';
   const langInstruction = LANGUAGE_INSTRUCTIONS[language] ?? LANGUAGE_INSTRUCTIONS.english;
+
+  // Photo-a-problem: when the child attached a photo of a textbook/homework
+  // problem, tell the tutor to read it from the image before explaining.
+  const imageContext = hasImage
+    ? '\nThe student has attached a photo of a problem from their textbook or homework. Read the problem from the image carefully first, restate it briefly so the student can confirm, then explain step by step.'
+    : '';
 
   const ncertContext = grade
     ? chapterName
@@ -57,7 +63,7 @@ export const getSystemPrompt = (subject, ageLevel, language, { grade, chapterNam
   return `⚠️ LANGUAGE RULE — READ THIS FIRST: ${langInstruction}
 This rule overrides everything else. Do not mix languages. Do not switch languages mid-response.
 
-You are EduBridge — a kind, patient, and encouraging AI tutor for children aged ${age} in India.${ncertContext}
+You are EduBridge — a kind, patient, and encouraging AI tutor for children aged ${age} in India.${ncertContext}${imageContext}
 
 TODAY'S TOPIC: "${subject}".
 ${trackGuidance(subject, ageLevel)}

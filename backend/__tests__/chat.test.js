@@ -21,7 +21,8 @@ vi.mock('../routes/analytics.js', () => ({
 import chatRouter from '../routes/chat.js';
 
 const app = express();
-app.use(express.json());
+// Mirror server.js: photo-a-problem payloads exceed the 100kb express default
+app.use(express.json({ limit: '5mb' }));
 app.use('/api', chatRouter);
 
 describe('POST /api/chat — input validation', () => {
@@ -289,5 +290,119 @@ describe('POST /api/chat — allowlist validation', () => {
     const callArgs = mockCreate.mock.calls[0][0];
     // No NCERT context should be injected for invalid grade
     expect(callArgs.system).not.toContain('Class 99');
+  });
+});
+
+describe('POST /api/chat — photo-a-problem (image attachments)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  // A tiny valid base64 string (decodes to 'hello world') — the validator only
+  // samples the alphabet, so any well-formed base64 works for tests.
+  const tinyImage = { data: 'aGVsbG8gd29ybGQ=', mediaType: 'image/jpeg' };
+
+  it('accepts an image-only request and substitutes the default question', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'This problem asks…' }] });
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ subject: 'Math', ageLevel: 'older', language: 'english', image: tinyImage });
+    expect(res.status).toBe(200);
+    const { messages } = mockCreate.mock.calls[0][0];
+    const finalTurn = messages[messages.length - 1];
+    expect(Array.isArray(finalTurn.content)).toBe(true);
+    expect(finalTurn.content[0]).toEqual({
+      type: 'image',
+      source: { type: 'base64', media_type: 'image/jpeg', data: tinyImage.data },
+    });
+    expect(finalTurn.content[1]).toEqual({ type: 'text', text: 'Can you explain this problem to me?' });
+  });
+
+  it('sends image first then text when both are provided', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Sure!' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Explain question 3', subject: 'Science', ageLevel: 'older', language: 'english', image: { ...tinyImage, mediaType: 'image/png' } });
+    const finalTurn = mockCreate.mock.calls[0][0].messages.at(-1);
+    expect(finalTurn.content[0].type).toBe('image');
+    expect(finalTurn.content[0].source.media_type).toBe('image/png');
+    expect(finalTurn.content[1]).toEqual({ type: 'text', text: 'Explain question 3' });
+  });
+
+  it('adds the photo instruction to the system prompt when an image is present', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Answer' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'Help', subject: 'Math', ageLevel: 'little', language: 'english', image: tinyImage });
+    expect(mockCreate.mock.calls[0][0].system).toContain('attached a photo');
+  });
+
+  it('rejects an unsupported media type with 400 Invalid image', async () => {
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'Help', subject: 'Math', ageLevel: 'little', image: { data: 'aGVsbG8=', mediaType: 'image/gif' } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid image');
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-string image data with 400', async () => {
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'Help', subject: 'Math', ageLevel: 'little', image: { data: 12345, mediaType: 'image/jpeg' } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid image');
+  });
+
+  it('rejects base64 payloads over the 4.2M-char cap with 400', async () => {
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'Help', subject: 'Math', ageLevel: 'little', image: { data: 'A'.repeat(4_200_001), mediaType: 'image/jpeg' } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid image');
+  });
+
+  it('rejects data that fails the base64 alphabet check with 400', async () => {
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ message: 'Help', subject: 'Math', ageLevel: 'little', image: { data: 'data:image/jpeg;base64,aGVsbG8=', mediaType: 'image/jpeg' } });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Invalid image');
+  });
+
+  it('still rejects an empty message when no image is attached (regression)', async () => {
+    const res = await request(app)
+      .post('/api/chat')
+      .send({ subject: 'Math', ageLevel: 'little' });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toBe('Message is required');
+  });
+
+  it('keeps plain-string content when no image is sent (regression)', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Four!' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({ message: 'What is 2+2?', subject: 'Math', ageLevel: 'little', language: 'english' });
+    const finalTurn = mockCreate.mock.calls[0][0].messages.at(-1);
+    expect(typeof finalTurn.content).toBe('string');
+    expect(mockCreate.mock.calls[0][0].system).not.toContain('attached a photo');
+  });
+
+  it('keeps history entries as plain text when an image is attached', async () => {
+    mockCreate.mockResolvedValue({ content: [{ text: 'Next answer' }] });
+    await request(app)
+      .post('/api/chat')
+      .send({
+        message: 'And this one?',
+        subject: 'Math', ageLevel: 'older', language: 'english',
+        history: [
+          { role: 'user', text: 'What is 5+5?' },
+          { role: 'assistant', text: 'Ten! 🌟' },
+        ],
+        image: tinyImage,
+      });
+    const { messages } = mockCreate.mock.calls[0][0];
+    expect(messages).toHaveLength(3);
+    expect(typeof messages[0].content).toBe('string');
+    expect(typeof messages[1].content).toBe('string');
+    expect(Array.isArray(messages[2].content)).toBe(true);
   });
 });
