@@ -10,6 +10,7 @@ import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSystemPrompt } from '../prompts/systemPrompts.js';
 import { validateChatRequest } from '../../shared/validation.js';
+import { logUsageEvent } from '../../shared/usageStore.js';
 import { logUsage } from './analytics.js';
 
 const router = express.Router();
@@ -48,7 +49,10 @@ router.post('/chat', async (req, res) => {
       ]
     });
 
-    // Record this question for the analytics dashboard (never blocks the reply)
+    // Record this question for analytics (never blocks the reply):
+    // durable zero-PII row in Supabase (fire-and-forget, not awaited) +
+    // local file counters for the dashboard endpoint.
+    logUsageEvent({ subject, ageLevel, language, grade });
     logUsage(subject, ageLevel, language);
 
     // Send Claude's reply back to the frontend

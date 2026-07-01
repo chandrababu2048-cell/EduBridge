@@ -5,6 +5,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import { getSystemPrompt } from './_lib/systemPrompts.js';
 import { validateChatRequest } from './_lib/validation.js';
+import { logUsageEvent } from './_lib/usageStore.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -23,9 +24,12 @@ function isRateLimited(ip) {
   return recent.length > MAX_PER_WINDOW;
 }
 
-// --- Best-effort usage logging ---
-// Writes to /tmp (the only writable path on Vercel). This is approximate and
-// may reset on cold starts. For durable analytics, add Vercel KV later.
+// --- Best-effort usage logging (two layers) ---
+// 1. Durable: logUsageEvent() inserts a zero-PII row into Supabase
+//    (usage_events) — feeds the real /api/public/stats numbers.
+// 2. Local: /tmp counters (the only writable path on Vercel) power the
+//    per-instance /api/analytics/stats breakdown. Approximate; resets on
+//    cold starts. Neither layer can ever break or delay the chat reply.
 const USAGE_FILE = '/tmp/usage.json';
 
 function logUsage(subject, ageLevel, language) {
@@ -79,6 +83,9 @@ export default async function handler(req, res) {
       ]
     });
 
+    // Fire-and-forget analytics — deliberately NOT awaited so the child's
+    // answer is never delayed; logUsageEvent swallows its own errors.
+    logUsageEvent({ subject, ageLevel, language, grade });
     logUsage(subject, ageLevel, language);
 
     const reply = response.content?.[0]?.text;

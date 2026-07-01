@@ -28,3 +28,7 @@ export {
   SAFETY_STATUSES,
   SAFETY_MODEL,
 } from './safetyMonitor.js';
+export {
+  logUsageEvent,
+  getQuestionsAnsweredCount,
+} from './usageStore.js';
