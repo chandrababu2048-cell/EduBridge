@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const Dashboard = ({ onBack }) => {
+const Dashboard = ({ onBack, localStats }) => {
+  // Doubt-to-mastery: concepts mastered live in the child's local/cloud stats
+  // (the same gamification source XP and badges use), not the server analytics.
+  const masteredTotal = Object.values(localStats?.mastered ?? {}).reduce((sum, n) => sum + n, 0);
+
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -58,6 +62,12 @@ const Dashboard = ({ onBack }) => {
               <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>Total Questions Asked</p>
               <p className="text-4xl font-bold" style={{ color: 'var(--color-primary)' }}>{stats.totalQuestions || 0}</p>
               <p className="text-sm mt-1" style={{ color: 'var(--color-muted)' }}>children helped so far</p>
+            </div>
+
+            <div className="col-span-2 rounded-xl p-4 card">
+              <p className="text-sm mb-1" style={{ color: 'var(--color-muted)' }}>🎯 Concepts Mastered</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--color-primary)' }}>{masteredTotal}</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>quick checks aced on the first try</p>
             </div>
 
             <div className="rounded-xl p-4 card">

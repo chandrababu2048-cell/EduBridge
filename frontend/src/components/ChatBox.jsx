@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import MessageBubble from './MessageBubble';
+import PracticeCard from './PracticeCard';
 import Mascot from './Mascot';
 import ConfettiEffect from './ConfettiEffect';
 import { SUBJECT_THEMES } from '../subjectThemes';
@@ -22,7 +23,7 @@ const LANGUAGES = [
   { code: 'marathi',  label: 'Marathi',  native: 'मराठी',    flag: '🇮🇳', speech: 'mr-IN' },
 ];
 
-const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onBack, onQuestionAsked, playSound }) => {
+const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onBack, onQuestionAsked, onMastery, playSound }) => {
   const theme = SUBJECT_THEMES[subject];
 
   const [messages, setMessages] = useState([
@@ -169,6 +170,28 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
       ].slice(-MAX_HISTORY);
       setMessages((prev) => [...prev, { role: 'assistant', text: data.reply }]);
 
+      // Doubt-to-mastery: fire a NON-BLOCKING request for 2 quick practice
+      // questions on the concept just explained. Deliberately not awaited —
+      // the child can keep chatting; the card appears whenever it's ready.
+      // Any failure (network, empty questions) skips practice silently.
+      fetch(`${import.meta.env.VITE_API_URL}/api/practice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          concept: userMessage,
+          answerText: data.reply,
+          subject, ageLevel, language, grade,
+        }),
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => {
+          const questions = Array.isArray(d?.questions) ? d.questions : [];
+          if (questions.length >= 1) {
+            setMessages((prev) => [...prev, { role: 'practice', questions, answered: [] }]);
+          }
+        })
+        .catch(() => {});
+
       // Celebrate the answer
       setMascotState('excited');
       setAnswerConfetti(Date.now());
@@ -256,9 +279,19 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 max-w-2xl w-full mx-auto">
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} role={msg.role} text={msg.text} imageUrl={msg.imageUrl} />
-        ))}
+        {messages.map((msg, i) =>
+          msg.role === 'practice' ? (
+            <PracticeCard
+              key={i}
+              questions={msg.questions}
+              subject={subject}
+              onMastery={onMastery}
+              playSound={playSound}
+            />
+          ) : (
+            <MessageBubble key={i} role={msg.role} text={msg.text} imageUrl={msg.imageUrl} />
+          )
+        )}
 
         {showExamples && (
           <div className="flex flex-col gap-2">

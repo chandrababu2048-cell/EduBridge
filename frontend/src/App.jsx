@@ -38,7 +38,7 @@ function App() {
   const handleSubjectChange = (s) => { setSubject(s); setChapter(null); };
   const handleGradeChange = (g) => { setGrade(g); setChapter(null); };
   const { xp, level, levelData, nextLevelXP, addXP, showLevelUp, setShowLevelUp, setXPFromCloud } = useXP();
-  const { stats, recordQuestion, setStatsFromCloud } = useStats();
+  const { stats, recordQuestion, recordMastery, setStatsFromCloud } = useStats();
   const { earned, locked, justUnlocked, clearUnlocked } = useBadges(stats);
   const { play, muted, toggleMute } = useSound();
 
@@ -54,13 +54,18 @@ function App() {
       .then(({ data }) => {
         if (cancelled || !data) return;
         setXPFromCloud(data.xp);
+        // Mastery counts piggyback inside the by_subject JSON column as the
+        // reserved "__mastered" key (least-invasive persistence — no schema
+        // change needed). Split it back out before it can pollute bySubject.
+        const { __mastered, ...bySubject } = data.by_subject ?? {};
         setStatsFromCloud({
           totalQuestions: data.total_questions,
           streak: data.streak,
           lastSubject: data.last_subject,
           usedTelugu: data.used_telugu,
           learnedEarly: data.learned_early,
-          bySubject: data.by_subject ?? {},
+          bySubject,
+          mastered: __mastered ?? {},
         });
       });
     return () => { cancelled = true; };
@@ -78,7 +83,9 @@ function App() {
         last_subject: stats.lastSubject,
         used_telugu: stats.usedTelugu,
         learned_early: stats.learnedEarly,
-        by_subject: stats.bySubject,
+        // Mastery counts ride inside the by_subject JSON as "__mastered"
+        // (no dedicated user_progress column — least-invasive persistence).
+        by_subject: { ...stats.bySubject, __mastered: stats.mastered ?? {} },
         updated_at: new Date().toISOString(),
       }).then(({ error }) => {
         if (error) console.warn('Progress sync error:', error.message);
@@ -92,6 +99,14 @@ function App() {
     const isFirst = stats.totalQuestions === 0;
     recordQuestion({ subject, language });
     addXP(isFirst ? XP_REWARDS.firstQuestion : XP_REWARDS.eachQuestion);
+    play('xpGain');
+  };
+
+  // Doubt-to-mastery: both practice questions right on the first try —
+  // award bonus XP and record the mastered concept for the child's stats.
+  const handleMastery = ({ subject }) => {
+    recordMastery(subject);
+    addXP(XP_REWARDS.mastery ?? 25);
     play('xpGain');
   };
 
@@ -236,6 +251,7 @@ function App() {
                   setLanguage={setLanguage}
                   onBack={() => setView('welcome')}
                   onQuestionAsked={handleQuestionAsked}
+                  onMastery={handleMastery}
                   playSound={play}
                 />
               </motion.div>
@@ -243,7 +259,7 @@ function App() {
 
             {view === 'dashboard' && (
               <motion.div key="dashboard" className="flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <Dashboard onBack={() => setView('welcome')} />
+                <Dashboard onBack={() => setView('welcome')} localStats={stats} />
               </motion.div>
             )}
 

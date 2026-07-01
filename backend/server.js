@@ -12,6 +12,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import morgan from 'morgan';
 import chatRouter from './routes/chat.js';
+import practiceRouter from './routes/practice.js';
 import analyticsRouter from './routes/analytics.js';
 import agentsRouter from './routes/agents.js';
 import teacherRouter from './routes/teacher.js';
@@ -55,8 +56,9 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Chat + analytics routes, both under /api
+// Chat + practice + analytics routes, all under /api
 app.use('/api', chatRouter);
+app.use('/api', practiceRouter);
 app.use('/api/analytics', analyticsRouter);
 app.use('/api/agents', agentsRouter);
 

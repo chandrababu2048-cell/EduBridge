@@ -23,7 +23,10 @@ export {
   VALID_IMAGE_TYPES,
   MAX_IMAGE_BASE64_CHARS,
   DEFAULT_IMAGE_QUESTION,
+  MAX_CONCEPT_LENGTH,
+  MAX_ANSWER_TEXT_LENGTH,
   validateChatRequest,
+  validatePracticeRequest,
   validateImage,
 } from './validation.js';
 export {
@@ -36,3 +39,11 @@ export {
   logUsageEvent,
   getQuestionsAnsweredCount,
 } from './usageStore.js';
+export {
+  PRACTICE_MODEL,
+  PRACTICE_MAX_TOKENS,
+  buildPracticeSystemPrompt,
+  buildPracticeUserMessage,
+  parsePracticeQuestions,
+  generatePracticeQuestions,
+} from './practice.js';

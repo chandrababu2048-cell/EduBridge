@@ -128,6 +128,55 @@ export function sanitizeHistory(history) {
   return pairs.slice(-MAX_HISTORY_ENTRIES);
 }
 
+// --- Practice questions (doubt-to-mastery) ---
+// The child's original question is capped like a chat message; the tutor's
+// explanation (optional context for the generator) gets a larger cap because
+// tutor replies run up to ~1024 tokens.
+export const MAX_CONCEPT_LENGTH = MAX_MESSAGE_LENGTH; // 2000 chars
+export const MAX_ANSWER_TEXT_LENGTH = 4000;
+
+/**
+ * Validate and sanitize a practice-question request body (POST /api/practice).
+ *
+ * Returns either:
+ *   { ok: true,  sanitized: { concept, answerText, subject, ageLevel, language, grade } }
+ *   { ok: false, error: '<human-readable message>' }
+ *
+ * Rules (mirrors validateChatRequest's philosophy):
+ * - concept: required non-empty string (the child's original question),
+ *   max MAX_CONCEPT_LENGTH chars — oversized input REJECTS (protects API costs).
+ * - answerText: optional string (the tutor's explanation, context only) —
+ *   silently truncated to MAX_ANSWER_TEXT_LENGTH, never rejected; non-strings
+ *   are stripped.
+ * - subject / ageLevel / language: allowlisted with the same safe fallbacks
+ *   as chat ('Math' / 'little' / 'english') so bad values never reach the prompt.
+ * - grade: integer 1–12, otherwise undefined.
+ */
+export function validatePracticeRequest(body) {
+  const { concept, answerText, subject, ageLevel, language, grade } = body || {};
+
+  if (typeof concept !== 'string' || concept.trim() === '') {
+    return { ok: false, error: 'Concept is required' };
+  }
+  if (concept.length > MAX_CONCEPT_LENGTH) {
+    return { ok: false, error: `Concept is too long. Please keep it under ${MAX_CONCEPT_LENGTH} characters.` };
+  }
+
+  const sanitized = {
+    concept: concept.trim(),
+    // Optional tutor explanation — context only, so it is truncated (never rejected).
+    answerText: typeof answerText === 'string' && answerText.trim() !== ''
+      ? answerText.trim().slice(0, MAX_ANSWER_TEXT_LENGTH)
+      : undefined,
+    subject: VALID_SUBJECTS.includes(subject) ? subject : 'Math',
+    ageLevel: VALID_AGE_LEVELS.includes(ageLevel) ? ageLevel : 'little',
+    language: VALID_LANGUAGES.includes(language) ? language : 'english',
+    grade: VALID_GRADES.includes(Number(grade)) ? Number(grade) : undefined,
+  };
+
+  return { ok: true, sanitized };
+}
+
 /**
  * Validate and sanitize a chat request body.
  *

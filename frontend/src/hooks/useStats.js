@@ -7,6 +7,8 @@ const STORAGE_KEY = 'edubridge_stats';
 const emptyStats = () => ({
   totalQuestions: 0,
   bySubject: { Math: 0, Science: 0, English: 0 },
+  // Concepts mastered per subject (both practice questions right first try)
+  mastered: {},
   streak: 0,
   lastSubject: null,
   usedTelugu: false,
@@ -16,7 +18,14 @@ const emptyStats = () => ({
 const load = () => {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    return saved ? { ...emptyStats(), ...saved, bySubject: { ...emptyStats().bySubject, ...saved.bySubject } } : emptyStats();
+    return saved
+      ? {
+          ...emptyStats(),
+          ...saved,
+          bySubject: { ...emptyStats().bySubject, ...saved.bySubject },
+          mastered: { ...saved.mastered },
+        }
+      : emptyStats();
   } catch {
     return emptyStats();
   }
@@ -43,6 +52,19 @@ export const useStats = () => {
     });
   }, []);
 
+  // Called when a child answers both practice questions right on the first try
+  const recordMastery = useCallback((subject) => {
+    if (!subject) return;
+    setStats((prev) => {
+      const next = {
+        ...prev,
+        mastered: { ...prev.mastered, [subject]: (prev.mastered?.[subject] || 0) + 1 },
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   // Called when cloud progress is loaded on login — silently takes the higher value
   const setStatsFromCloud = useCallback((cloudStats) => {
     if (!cloudStats || (cloudStats.totalQuestions ?? 0) === 0) return;
@@ -52,11 +74,12 @@ export const useStats = () => {
         ...emptyStats(),
         ...cloudStats,
         bySubject: { ...emptyStats().bySubject, ...cloudStats.bySubject },
+        mastered: { ...cloudStats.mastered },
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       return next;
     });
   }, []);
 
-  return { stats, recordQuestion, setStatsFromCloud };
+  return { stats, recordQuestion, recordMastery, setStatsFromCloud };
 };

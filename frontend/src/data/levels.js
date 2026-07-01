@@ -13,7 +13,8 @@ export const XP_REWARDS = {
   firstQuestion: 50,
   eachQuestion: 10,
   streakBonus: 25,    // 5 questions in a row
-  subjectMaster: 100  // 10 questions in one subject
+  subjectMaster: 100, // 10 questions in one subject
+  mastery: 25         // both practice questions right on the first try
 };
 
 // Given a total XP, return the level object the child is currently on.
