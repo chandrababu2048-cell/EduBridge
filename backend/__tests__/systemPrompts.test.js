@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { getSystemPrompt } from '../prompts/systemPrompts.js';
+// Import from the canonical shared package (single source of truth).
+// backend/prompts/systemPrompts.js is now just a shim over this module.
+import { getSystemPrompt } from '../../shared/index.js';
 
 describe('getSystemPrompt', () => {
   it('includes the subject in the output', () => {

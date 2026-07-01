@@ -1,9 +1,15 @@
 // EduBridge Chat Route
-// Receives a child's question and returns Claude's tutoring response
+// Receives a child's question and returns Claude's tutoring response.
+//
+// Validation and the system prompt come from the shared canonical modules
+// (shared/ -> frontend/api/_lib/). This Express server runs from a full repo
+// checkout (local dev / VM), so importing across directories is safe here.
+// Do not re-implement allowlists or sanitization in this file.
 
 import express from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import { getSystemPrompt } from '../prompts/systemPrompts.js';
+import { validateChatRequest } from '../../shared/validation.js';
 import { logUsage } from './analytics.js';
 
 const router = express.Router();
@@ -11,53 +17,21 @@ const router = express.Router();
 // Initialize the Anthropic client — API key comes from .env, never hardcoded
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Allowlists — must stay in sync with the frontend constants
-const VALID_SUBJECTS = ['Math', 'Science', 'English', 'Civic Sense', 'My Rights', 'Respect & Safety', 'Communication'];
-const VALID_AGE_LEVELS = ['little', 'older'];
-const VALID_LANGUAGES = ['english', 'hindi', 'telugu', 'tamil', 'kannada', 'bengali', 'marathi'];
-const CHAPTER_NAME_MAX_LEN = 120;
-
 // POST /api/chat — main tutoring endpoint
 router.post('/chat', async (req, res) => {
   try {
-    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = req.body;
-
-    // Validate the incoming message
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
+    // Validate + sanitize the request body (shared canonical logic)
+    const result = validateChatRequest(req.body);
+    if (!result.ok) {
+      return res.status(400).json({ error: result.error });
     }
-
-    // Reject messages that are unreasonably long to protect API costs
-    if (message.length > 2000) {
-      return res.status(400).json({ error: 'Message is too long. Please keep it under 2000 characters.' });
-    }
-
-    // Validate subject, ageLevel and language against allowlists to prevent
-    // prompt injection through these fields (they are interpolated into the system prompt)
-    const safeSubject = VALID_SUBJECTS.includes(subject) ? subject : 'Math';
-    const safeAgeLevel = VALID_AGE_LEVELS.includes(ageLevel) ? ageLevel : 'little';
-    const safeLanguage = VALID_LANGUAGES.includes(language) ? language : 'english';
-
-    // Validate grade (must be an integer 1–12)
-    const safeGrade = Number.isInteger(Number(grade)) && Number(grade) >= 1 && Number(grade) <= 12
-      ? Number(grade)
-      : undefined;
-
-    // chapterName is embedded verbatim in the system prompt — cap its length and
-    // strip characters that could be used to inject prompt-control sequences.
-    const safeChapterName = typeof chapterName === 'string'
-      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN).replace(/[<>{}[\]\\]/g, '').trim()
-      : undefined;
-
-    const safeChapterIndex = Number.isInteger(Number(chapterIndex)) && Number(chapterIndex) >= 1
-      ? Number(chapterIndex)
-      : undefined;
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = result.sanitized;
 
     // Build the child-friendly system prompt for this subject/age/language
-    const systemPrompt = getSystemPrompt(safeSubject, safeAgeLevel, safeLanguage, {
-      grade: safeGrade,
-      chapterName: safeChapterName,
-      chapterIndex: safeChapterIndex,
+    const systemPrompt = getSystemPrompt(subject, ageLevel, language, {
+      grade,
+      chapterName,
+      chapterIndex,
     });
 
     // Call Claude API (claude-sonnet-4-6, max 1024 tokens per AGENTS.md)
@@ -69,7 +43,7 @@ router.post('/chat', async (req, res) => {
     });
 
     // Record this question for the analytics dashboard (never blocks the reply)
-    logUsage(safeSubject, safeAgeLevel, safeLanguage);
+    logUsage(subject, ageLevel, language);
 
     // Send Claude's reply back to the frontend
     const reply = response.content?.[0]?.text;

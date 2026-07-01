@@ -1,7 +1,15 @@
-// Shared system-prompt builder for the EduBridge serverless functions.
+// EduBridge — CANONICAL system-prompt builder (single source of truth).
+//
+// WHY THIS LIVES HERE: production runs on Vercel serverless functions under
+// frontend/api/. Vercel's file tracing is only guaranteed to bundle files
+// reachable from the frontend project root, so the canonical implementation
+// must live inside frontend/. The repo-root `shared/` package re-exports this
+// file, and backend/prompts/systemPrompts.js is a thin shim over `shared/`.
+// Do NOT copy this logic anywhere else — import it.
+//
 // (Files under api/ that start with "_" are NOT treated as routes by Vercel.)
-// Keep in sync with backend/prompts/systemPrompts.js.
 
+// Per-track teaching focus. `ageLevel` is 'little' (6-10) or 'older' (11-14).
 const trackGuidance = (subject, ageLevel) => {
   const little = ageLevel === 'little';
   switch (subject) {

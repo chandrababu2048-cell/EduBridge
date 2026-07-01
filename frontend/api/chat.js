@@ -4,14 +4,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import fs from 'fs';
 import { getSystemPrompt } from './_lib/systemPrompts.js';
+import { validateChatRequest } from './_lib/validation.js';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-// Allowlists — prevent prompt injection via interpolated fields
-const VALID_SUBJECTS = ['Math', 'Science', 'English', 'Civic Sense', 'My Rights', 'Respect & Safety', 'Communication'];
-const VALID_AGE_LEVELS = ['little', 'older'];
-const VALID_LANGUAGES = ['english', 'hindi', 'telugu', 'tamil', 'kannada', 'bengali', 'marathi'];
-const CHAPTER_NAME_MAX_LEN = 120;
 
 // --- Best-effort rate limit (per warm instance) ---
 // Protects the API key from runaway loops. Note: serverless instances are
@@ -57,17 +52,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = req.body || {};
-
-    // Validate the incoming message
-    if (!message || typeof message !== 'string' || !message.trim()) {
-      return res.status(400).json({ error: 'Message is required' });
+    // Validate + sanitize the request body (shared canonical logic — see _lib/validation.js)
+    const result = validateChatRequest(req.body);
+    if (!result.ok) {
+      return res.status(400).json({ error: result.error });
     }
-
-    // Reject messages that are unreasonably long to protect API costs
-    if (message.length > 2000) {
-      return res.status(400).json({ error: 'Message is too long. Please keep it under 2000 characters.' });
-    }
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = result.sanitized;
 
     // Kid-friendly rate-limit message
     const ip = (req.headers['x-forwarded-for'] || '').split(',')[0].trim() || 'unknown';
@@ -75,38 +65,15 @@ export default async function handler(req, res) {
       return res.status(429).json({ error: 'Too many questions! Please wait a minute 😊' });
     }
 
-    // Validate fields against allowlists — they are interpolated into the system prompt
-    const safeSubject = VALID_SUBJECTS.includes(subject) ? subject : 'Math';
-    const safeAgeLevel = VALID_AGE_LEVELS.includes(ageLevel) ? ageLevel : 'little';
-    const safeLanguage = VALID_LANGUAGES.includes(language) ? language : 'english';
-
-    const safeGrade = Number.isInteger(Number(grade)) && Number(grade) >= 1 && Number(grade) <= 12
-      ? Number(grade)
-      : undefined;
-
-    // Strip characters that could be used to inject prompt-control sequences,
-    // then cap the length. This mirrors the hardening in backend/routes/chat.js.
-    const safeChapterName = typeof chapterName === 'string'
-      ? chapterName.slice(0, CHAPTER_NAME_MAX_LEN).replace(/[<>{}[\]\\]/g, '').trim()
-      : undefined;
-
-    const safeChapterIndex = Number.isInteger(Number(chapterIndex)) && Number(chapterIndex) >= 1
-      ? Number(chapterIndex)
-      : undefined;
-
     // Call Claude with the child-safe system prompt
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
-      system: getSystemPrompt(safeSubject, safeAgeLevel, safeLanguage, {
-        grade: safeGrade,
-        chapterName: safeChapterName,
-        chapterIndex: safeChapterIndex,
-      }),
+      system: getSystemPrompt(subject, ageLevel, language, { grade, chapterName, chapterIndex }),
       messages: [{ role: 'user', content: message }]
     });
 
-    logUsage(safeSubject, safeAgeLevel, safeLanguage);
+    logUsage(subject, ageLevel, language);
 
     const reply = response.content?.[0]?.text;
     if (!reply) {
