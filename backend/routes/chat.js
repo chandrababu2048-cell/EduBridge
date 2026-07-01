@@ -25,7 +25,7 @@ router.post('/chat', async (req, res) => {
     if (!result.ok) {
       return res.status(400).json({ error: result.error });
     }
-    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = result.sanitized;
+    const { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history } = result.sanitized;
 
     // Build the child-friendly system prompt for this subject/age/language
     const systemPrompt = getSystemPrompt(subject, ageLevel, language, {
@@ -34,12 +34,18 @@ router.post('/chat', async (req, res) => {
       chapterIndex,
     });
 
-    // Call Claude API (claude-sonnet-4-6, max 1024 tokens per AGENTS.md)
+    // Call Claude API (claude-sonnet-4-6, max 1024 tokens per AGENTS.md).
+    // Conversation memory: the sanitized history is guaranteed to be a valid
+    // alternating user/assistant list ending with 'assistant' (or empty), so
+    // appending the new user message always produces a valid messages array.
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       system: systemPrompt,
-      messages: [{ role: 'user', content: message }]
+      messages: [
+        ...history.map(({ role, text }) => ({ role, content: text })),
+        { role: 'user', content: message },
+      ]
     });
 
     // Record this question for the analytics dashboard (never blocks the reply)

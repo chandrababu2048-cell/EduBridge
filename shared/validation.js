@@ -8,6 +8,8 @@ export {
   VALID_LANGUAGES,
   VALID_GRADES,
   MAX_MESSAGE_LENGTH,
+  MAX_HISTORY_ENTRIES,
   CHAPTER_NAME_MAX_LEN,
   validateChatRequest,
+  sanitizeHistory,
 } from '../frontend/api/_lib/validation.js';

@@ -18,6 +18,13 @@ export {
   VALID_LANGUAGES,
   VALID_GRADES,
   MAX_MESSAGE_LENGTH,
+  MAX_HISTORY_ENTRIES,
   CHAPTER_NAME_MAX_LEN,
   validateChatRequest,
 } from './validation.js';
+export {
+  createSafetyChecker,
+  checkMessageSafety,
+  SAFETY_STATUSES,
+  SAFETY_MODEL,
+} from './safetyMonitor.js';

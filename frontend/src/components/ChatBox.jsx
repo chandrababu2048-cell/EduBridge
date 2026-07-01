@@ -38,6 +38,14 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
   const recognitionRef = useRef(null);
   const mascotTimerRef = useRef(null);
 
+  // Conversation memory sent to the tutor so "explain that again" works.
+  // Only REAL user↔tutor exchanges go in here (updated on successful replies),
+  // so the greeting, canned distress/inappropriate responses, and error
+  // messages are excluded by construction. Capped to the last 10 messages
+  // (5 exchanges) to protect API costs.
+  const MAX_HISTORY = 10;
+  const historyRef = useRef([]);
+
   const currentLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
   const showExamples = messages.length === 1 && !loading;
@@ -101,10 +109,19 @@ const ChatBox = ({ subject, ageLevel, grade, chapter, language, setLanguage, onB
             message: userMessage, subject, ageLevel, grade, language,
             chapterName: chapter !== null ? getChapters(subject, grade)[chapter] ?? null : null,
             chapterIndex: chapter !== null ? chapter + 1 : null,
+            // Previous real exchanges (excludes greeting/canned/error messages
+            // and the just-sent message — see historyRef above).
+            history: historyRef.current,
           })
       });
       if (!response.ok) throw new Error('API error');
       const data = await response.json();
+      // Remember this successful exchange for the next question
+      historyRef.current = [
+        ...historyRef.current,
+        { role: 'user', text: userMessage },
+        { role: 'assistant', text: data.reply },
+      ].slice(-MAX_HISTORY);
       setMessages((prev) => [...prev, { role: 'assistant', text: data.reply }]);
 
       // Celebrate the answer

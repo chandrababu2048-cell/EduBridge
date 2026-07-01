@@ -27,12 +27,71 @@ export const VALID_GRADES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 // Caps — protect API costs and the prompt from oversized inputs.
 export const MAX_MESSAGE_LENGTH = 2000;
 export const CHAPTER_NAME_MAX_LEN = 120;
+export const MAX_HISTORY_ENTRIES = 10;
+
+/**
+ * Sanitize an optional conversation history (multi-turn memory).
+ *
+ * Philosophy: a corrupted history must NEVER block a child's question, so
+ * invalid input is stripped (treated as no history) rather than rejected.
+ *
+ * Rules:
+ * - Not an array → [] (no history).
+ * - Each entry must be { role: 'user'|'assistant', text: non-empty string
+ *   ≤ MAX_MESSAGE_LENGTH }; anything else is dropped.
+ * - The Claude API requires strictly alternating user/assistant turns, and the
+ *   new question is appended as a 'user' turn after this history. So we keep
+ *   only well-formed [user, assistant] pairs, scanning from the most recent
+ *   entry backwards (a reply pairs with the message immediately before it);
+ *   entries that break pairing (consecutive same-role turns, a dangling
+ *   trailing user turn) are dropped.
+ * - Trimmed to the last MAX_HISTORY_ENTRIES entries (pair-aligned, since the
+ *   cap is even and the list is made of whole pairs).
+ *
+ * The result is guaranteed to be empty or to start with 'user', alternate
+ * strictly, and end with 'assistant' — always valid to prepend to the new
+ * user message.
+ */
+export function sanitizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+
+  // 1. Drop entries with a bad shape, role, or text.
+  const typed = history.filter(
+    (entry) =>
+      entry &&
+      typeof entry === 'object' &&
+      (entry.role === 'user' || entry.role === 'assistant') &&
+      typeof entry.text === 'string' &&
+      entry.text.trim() !== '' &&
+      entry.text.length <= MAX_MESSAGE_LENGTH
+  );
+
+  // 2. Coerce to valid alternation: keep only complete user→assistant pairs,
+  //    walking from the end so the most recent exchanges win.
+  const pairs = [];
+  for (let i = typed.length - 1; i >= 1; ) {
+    if (typed[i].role === 'assistant' && typed[i - 1].role === 'user') {
+      pairs.unshift(
+        { role: 'user', text: typed[i - 1].text },
+        { role: 'assistant', text: typed[i].text }
+      );
+      i -= 2;
+    } else {
+      // This entry breaks alternation (repeated role / dangling user turn) —
+      // skip it and keep scanning.
+      i -= 1;
+    }
+  }
+
+  // 3. Cap the total history length (most recent pairs win).
+  return pairs.slice(-MAX_HISTORY_ENTRIES);
+}
 
 /**
  * Validate and sanitize a chat request body.
  *
  * Returns either:
- *   { ok: true,  sanitized: { message, subject, ageLevel, language, grade, chapterName, chapterIndex } }
+ *   { ok: true,  sanitized: { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history } }
  *   { ok: false, error: '<human-readable message>' }
  *
  * Sanitization rules (the spec — mirrored by backend/__tests__/chat.test.js):
@@ -43,9 +102,11 @@ export const CHAPTER_NAME_MAX_LEN = 120;
  * - chapterName: embedded verbatim in the system prompt — capped at
  *   CHAPTER_NAME_MAX_LEN and stripped of prompt-control characters.
  * - chapterIndex: integer >= 1, otherwise undefined.
+ * - history: optional multi-turn memory — sanitized by sanitizeHistory()
+ *   (invalid/oversized history is stripped, never rejected).
  */
 export function validateChatRequest(body) {
-  const { message, subject, ageLevel, language, grade, chapterName, chapterIndex } = body || {};
+  const { message, subject, ageLevel, language, grade, chapterName, chapterIndex, history } = body || {};
 
   // The message is required and must be a non-empty string
   if (!message || typeof message !== 'string' || !message.trim()) {
@@ -74,6 +135,8 @@ export function validateChatRequest(body) {
     chapterIndex: Number.isInteger(Number(chapterIndex)) && Number(chapterIndex) >= 1
       ? Number(chapterIndex)
       : undefined,
+    // Conversation memory — always a valid (possibly empty) alternating list.
+    history: sanitizeHistory(history),
   };
 
   return { ok: true, sanitized };
