@@ -17,6 +17,11 @@ backend/data/
 # Vite temp files
 *.timestamp-*.mjs
 
+# Playwright artifacts
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+
 # Claude Code local tooling & agent worktrees
 .claude/
 

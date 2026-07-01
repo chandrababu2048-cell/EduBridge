@@ -1,12 +1,14 @@
 # EduBridge CI — no broken code reaches production.
 #
-# Two parallel jobs for fast feedback:
+# Three parallel jobs for fast feedback:
 #   frontend — install, production build, 65 vitest tests
 #   backend  — install, 77 vitest tests
+#   e2e      — install, production build, 5 Playwright smoke tests
+#              against a real Chromium (vite preview on port 4173)
 #
 # No secrets are needed: the frontend build tolerates missing
-# VITE_SUPABASE_* env vars (guest mode), and backend tests stub the
-# Anthropic and Supabase clients.
+# VITE_SUPABASE_* env vars (guest mode), backend tests stub the
+# Anthropic and Supabase clients, and the E2E suite intercepts /api calls.
 
 name: CI
 
@@ -77,3 +79,35 @@ jobs:
       - name: Test
         working-directory: backend
         run: npm test
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      # GitHub runners have no pre-installed Playwright browser; download the
+      # Chromium revision matching the pinned @playwright/test version.
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+
+      # The Playwright webServer serves the PRODUCTION build via vite preview.
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+      - name: E2E smoke tests
+        working-directory: frontend
+        run: npm run test:e2e
