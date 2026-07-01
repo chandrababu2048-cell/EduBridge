@@ -1,5 +1,7 @@
 # 🌉 EduBridge — Free AI Tutor for Every Child
 
+![CI](https://github.com/chandrababu2048-cell/EduBridge/actions/workflows/ci.yml/badge.svg)
+
 EduBridge is a free, open-source AI tutoring app that gives underprivileged children access to patient, personalized explanations of Math, Science, and English — powered by Claude AI.
 
 ## ✨ Features
